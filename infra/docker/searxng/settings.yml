@@ -1,0 +1,9 @@
+# Local SearXNG for WEB_SEARCH_PROVIDER=searxng (docs/23). Dev only.
+use_default_settings: true
+server:
+  secret_key: "dev-only-change-me"   # replaced by SEARXNG_SECRET in deployed environments
+  limiter: false
+  image_proxy: false
+search:
+  formats: [html, json]
+  safe_search: 1

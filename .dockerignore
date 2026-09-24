@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.git
+**/node_modules
+**/.venv
+**/.next
+**/__pycache__
+docs
+**/.next-e2e
+# desktop build output and the local code-signing identity (never needed by image builds)
+apps/desktop/dist
+apps/desktop/.signing
+# test artifacts and saved test sessions
+**/playwright/.auth
+**/test-results
+**/playwright-report

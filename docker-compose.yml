@@ -1,0 +1,123 @@
+name: nova
+
+x-api-env: &api-env
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://nova:nova@postgres:5432/nova
+    REDIS_URL: redis://redis:6379/0
+    S3_ENDPOINT: http://minio:9000
+    S3_PUBLIC_ENDPOINT: http://localhost:9000
+    EMBEDDING_ENDPOINT: http://embeddings:80
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_USER: nova, POSTGRES_PASSWORD: nova, POSTGRES_DB: nova }
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports: ["${POSTGRES_HOST_PORT:-5432}:5432"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U nova -d nova"], interval: 5s, timeout: 3s, retries: 20 }
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes: [redisdata:/data]
+    ports: ["${REDIS_HOST_PORT:-6379}:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 20 }
+
+  minio:
+    image: quay.io/minio/minio:latest  # Docker Hub images discontinued; pin by digest in CI
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: "${S3_ACCESS_KEY}", MINIO_ROOT_PASSWORD: "${S3_SECRET_KEY}" }
+    volumes: [miniodata:/data]
+    ports: ["9000:9000", "9001:9001"]
+    healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 5s, timeout: 3s, retries: 20 }
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on: { minio: { condition: service_healthy } }
+    env_file: .env
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY &&
+       mc mb -p local/$$S3_BUCKET && mc anonymous set none local/$$S3_BUCKET"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025", "1025:1025"]
+
+  migrate:
+    profiles: ["app"]
+    build: { context: apps/api, target: dev }
+    <<: *api-env
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    depends_on: { postgres: { condition: service_healthy } }
+    restart: "no"
+
+  api:
+    profiles: ["app"]
+    build: { context: apps/api, target: dev }
+    <<: *api-env
+    volumes: ["./apps/api:/app", "/app/.venv"]
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck: { test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"], interval: 10s, timeout: 3s, retries: 10 }
+
+  worker:
+    profiles: ["app"]
+    build: { context: apps/api, target: dev }
+    <<: *api-env
+    command: ["uv", "run", "arq", "app.workers.settings.WorkerSettings", "--watch", "app"]
+    volumes: ["./apps/api:/app", "/app/.venv"]
+    depends_on: { api: { condition: service_healthy } }
+
+  web:
+    profiles: ["app"]
+    build: { context: ., dockerfile: apps/web/Dockerfile, target: dev }
+    env_file: .env
+    environment: { API_INTERNAL_URL: http://api:8000 }
+    volumes: ["./apps/web:/repo/apps/web", "/repo/apps/web/node_modules", "/repo/apps/web/.next"]
+    ports: ["3000:3000"]
+    depends_on: { api: { condition: service_healthy } }
+
+  # --- optional feature services -------------------------------------------------
+  embeddings:               # self-hosted TEI; set EMBEDDING_MODEL to the model you choose
+    profiles: ["embeddings"]
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.8
+    command: ["--model-id", "${EMBEDDING_MODEL:-set-EMBEDDING_MODEL-in-.env}", "--port", "80"]
+    volumes: ["hfcache:/data"]
+    ports: ["8081:80"]
+    healthcheck: { test: ["CMD-SHELL", "curl -fsS http://localhost:80/health || exit 1"], interval: 10s, timeout: 3s, retries: 60 }
+
+  sandbox-runner:
+    profiles: ["tools"]
+    build: { context: apps/sandbox-runner }
+    environment:
+      APP_ENV: development
+      SANDBOX_RUNTIME: runc
+      SANDBOX_IMAGE: nova-sandbox-python:dev
+      SANDBOX_DOCKER_HOST: unix:///var/run/docker.sock
+      SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:?}
+    user: "0:0"             # DEV ONLY: socket access; production uses dedicated gVisor hosts
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock"]   # DEV ONLY — never in staging/production
+    ports: ["8090:8090"]
+
+  searxng:
+    profiles: ["tools"]
+    image: searxng/searxng:latest
+    volumes: ["./infra/docker/searxng/settings.yml:/etc/searxng/settings.yml:ro"]
+    ports: ["8888:8080"]
+
+  clamav:
+    profiles: ["security"]
+    image: clamav/clamav:stable
+    ports: ["3310:3310"]
+    healthcheck: { test: ["CMD", "clamdcheck.sh"], interval: 30s, timeout: 10s, retries: 20 }
+
+volumes: { pgdata: {}, redisdata: {}, miniodata: {}, hfcache: {} }

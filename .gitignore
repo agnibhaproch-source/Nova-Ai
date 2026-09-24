@@ -1,0 +1,46 @@
+# env & secrets
+.env
+.env.*
+!.env.example
+!apps/api/.env.test
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+# node
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+next-env.d.ts
+# misc
+.DS_Store
+**/playwright/.auth/
+.next-e2e/
+
+# production env files (secrets)
+.env.production
+infra/deploy/.env.production
+
+# desktop installers published by make desktop-release (large binaries; not in git)
+apps/web/public/downloads/
+
+# desktop build output and the local code-signing identity (private key material)
+apps/desktop/dist/
+apps/desktop/.signing/
+
+# Terraform: local state/caches and filled-in config with secrets
+**/.terraform/
+*.tfstate
+*.tfstate.*
+**/terraform.tfvars
+**/backend.hcl

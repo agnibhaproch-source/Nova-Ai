@@ -1,0 +1,2 @@
+{"id":"ml-001","suite":"multilingual","input":{"message":"भारत की राजधानी क्या है? हिंदी में एक वाक्य में जवाब दें।"},"expected":{"script":"devanagari","must_include":["दिल्ली"]},"tags":["hindi"]}
+{"id":"ml-002","suite":"multilingual","input":{"message":"Mujhe 3 tips do ki subah jaldi kaise uthe, Hinglish mein."},"expected":{"bullet_count":3,"script":"latin"},"tags":["hinglish"]}

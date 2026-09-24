@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'" />
+    <title>Unlock Nova</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; --accent: #5b5bd6; }
+      body { margin: 0; padding: 28px 28px 22px; line-height: 1.5; user-select: none; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p { margin: 0 0 16px; font-size: 13px; opacity: 0.75; }
+      input { width: 100%; box-sizing: border-box; padding: 10px 12px; font: 20px/1 ui-monospace, monospace; letter-spacing: 6px; text-align: center; border-radius: 10px; border: 1px solid #8886; background: transparent; }
+      input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .row { display: flex; gap: 8px; margin-top: 14px; }
+      button { flex: 1; padding: 9px 14px; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; }
+      #unlock { background: var(--accent); color: #fff; }
+      #quit { background: #8883; color: inherit; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      #status { min-height: 20px; margin: 12px 0 0; font-size: 13px; opacity: 1; }
+      .error { color: #e5484d; }
+    </style>
+  </head>
+  <body>
+    <form id="f" autocomplete="off">
+      <h1>Unlock Nova</h1>
+      <p>Enter your passkey to open Nova.</p>
+      <input id="key" type="password" inputmode="numeric" maxlength="32" aria-label="Passkey" autofocus required />
+      <div class="row">
+        <button type="button" id="quit">Quit</button>
+        <button type="submit" id="unlock">Unlock</button>
+      </div>
+      <p id="status" role="status"></p>
+    </form>
+    <script src="passkey-ui.js"></script>
+  </body>
+</html>

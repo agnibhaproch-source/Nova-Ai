@@ -1,0 +1,83 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency: { group: "${{ github.workflow }}-${{ github.ref }}", cancel-in-progress: true }
+permissions: { contents: read }
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { enable-cache: true }
+      - run: sudo apt-get update && sudo apt-get install -y libmagic1
+      - run: ./scripts/ci_env.sh
+      - run: docker compose up -d --wait postgres redis minio mailpit && docker compose up minio-init
+      - working-directory: apps/api
+        run: |
+          uv sync --frozen
+          uv run ruff check . && uv run ruff format --check .
+          uv run mypy app
+          uv run alembic upgrade head && uv run alembic check
+          uv run pytest -q --cov=app --cov-report=xml
+      - working-directory: apps/sandbox-runner
+        run: uv sync --frozen && uv run ruff check . && uv run mypy sandbox_runner && uv run pytest -q
+      - working-directory: evals
+        run: uv sync && uv run ruff check . && uv run pytest -q tests_scorers.py
+      - name: extension manifest + scripts parse
+        run: node -e "JSON.parse(require('fs').readFileSync('apps/extension/manifest.json','utf8'))" && node --check apps/extension/background.js && node --check apps/extension/options.js
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/ci_env.sh
+      - working-directory: apps/web
+        run: |
+          pnpm exec eslint src
+          pnpm exec tsc --noEmit
+          pnpm exec vitest run
+          pnpm build
+      - run: ./scripts/check_bundle_secrets.sh
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker buildx build --target prod -t nova-api:ci apps/api
+      - run: docker buildx build --target prod -f apps/web/Dockerfile -t nova-web:ci .
+      - run: docker buildx build -t nova-sandbox-runner:ci apps/sandbox-runner
+      - run: docker buildx build -t nova-sandbox-python:ci infra/docker/sandbox-python
+
+  e2e:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { enable-cache: true }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y libmagic1
+      - run: ./scripts/ci_env.sh
+      - run: docker compose up -d --wait postgres redis minio mailpit && docker compose up minio-init
+      - run: pnpm install --frozen-lockfile
+      - working-directory: apps/api
+        run: uv sync --frozen && uv run alembic upgrade head
+      - run: node apps/desktop/node_modules/electron/install.js
+      - working-directory: apps/web
+        # xvfb: the desktop-app (Electron) and extension specs need a display
+        run: pnpm exec playwright install --with-deps chromium && xvfb-run -a pnpm exec playwright test
+        env: { CI: "true" }
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: apps/web/playwright-report, retention-days: 7 }

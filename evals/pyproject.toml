@@ -1,0 +1,16 @@
+[project]
+name = "nova-evals"
+version = "0.1.0"
+description = "NOVA AI evaluation harness (docs/41)"
+requires-python = ">=3.12,<3.13"
+dependencies = ["httpx>=0.28"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

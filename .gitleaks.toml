@@ -1,0 +1,23 @@
+title = "nova gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "groq-api-key"
+description = "Groq API key"
+regex = '''gsk_[A-Za-z0-9]{40,}'''
+
+[[rules]]
+id = "nova-api-key"
+description = "NOVA personal API key"
+regex = '''nova_sk_[A-Za-z0-9_-]{30,}'''
+
+[[rules]]
+id = "razorpay-key"
+description = "Razorpay key id/secret"
+regex = '''rzp_(live|test)_[A-Za-z0-9]{10,}'''
+
+[allowlist]
+# .env.example holds only empty values and CHANGE_ME placeholders.
+paths = ['''apps/api/tests/''', '''apps/web/tests/''', '''docs/''', '''\.env\.example$''']

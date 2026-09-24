@@ -1,0 +1,45 @@
+# Test-only registry: literal test-model-* ids are served by tests/fakes/groq_stub.py.
+version: 1
+defaults:
+  model_key: primary
+  purposes: { chat: primary, title: fast, summary: fast, memory_extraction: fast,
+              query_rewrite: fast, eval_judge: primary }
+models:
+  - key: primary
+    groq_model_id: ${GROQ_DEFAULT_MODEL}
+    display_name: "Nova Standard"
+    context_window: 8192
+    max_output_tokens: 4096
+    default_max_output_tokens: 512
+    default_temperature: 0.7
+    default_top_p: 1.0
+    supports_tools: true
+    supports_json_mode: true
+    fallback_key: fast
+    plans: [free, plus, pro]
+    pricing: { input_per_million_usd: 0.5, output_per_million_usd: 1.0 }
+  - key: fast
+    groq_model_id: ${GROQ_FAST_MODEL}
+    display_name: "Nova Fast"
+    context_window: 8192
+    max_output_tokens: 2048
+    default_max_output_tokens: 256
+    default_temperature: 0.7
+    default_top_p: 1.0
+    supports_tools: true
+    supports_json_mode: true
+    plans: [free, plus, pro]
+
+  - key: vision
+    groq_model_id: test-model-vision
+    display_name: "Nova Vision"
+    context_window: 8192
+    max_output_tokens: 2048
+    default_max_output_tokens: 256
+    default_temperature: 0.3
+    default_top_p: 1.0
+    supports_tools: true
+    supports_json_mode: true
+    supports_vision: true
+    max_images_per_request: 3
+    plans: [free, plus, pro]

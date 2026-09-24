@@ -1,0 +1,158 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens — docs/27_UI_UX_SPECIFICATION.md §1 */
+:root {
+  --background: oklch(0.995 0 0);
+  --surface: oklch(0.98 0.002 270);
+  --surface-raised: oklch(1 0 0);
+  --foreground: oklch(0.21 0.01 270);
+  --muted-foreground: oklch(0.5 0.01 270);
+  --border: oklch(0.92 0.004 270);
+  --primary: oklch(0.55 0.2 275);
+  --primary-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.96 0.02 275);
+  --user-bubble: oklch(0.95 0.01 275);
+  --success: oklch(0.6 0.15 150);
+  --warning: oklch(0.75 0.15 75);
+  --destructive: oklch(0.58 0.21 25);
+  --ring: var(--primary);
+  --code-bg: oklch(0.97 0.003 270);
+  --shadow-composer: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.dark {
+  --background: oklch(0.16 0.005 270);
+  --surface: oklch(0.2 0.006 270);
+  --surface-raised: oklch(0.24 0.007 270);
+  --foreground: oklch(0.95 0.003 270);
+  --muted-foreground: oklch(0.7 0.01 270);
+  --border: oklch(0.3 0.008 270);
+  --primary: oklch(0.68 0.17 275);
+  --primary-foreground: oklch(0.15 0.02 275);
+  --accent: oklch(0.28 0.04 275);
+  --user-bubble: oklch(0.27 0.02 275);
+  --success: oklch(0.7 0.14 150);
+  --warning: oklch(0.8 0.14 75);
+  --destructive: oklch(0.68 0.19 25);
+  --code-bg: oklch(0.13 0.005 270);
+  --shadow-composer: 0 4px 24px rgb(0 0 0 / 0.35);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-user-bubble: var(--user-bubble);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-code-bg: var(--code-bg);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-composer: var(--shadow-composer);
+  --ease-out-nova: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 25%, transparent);
+}
+
+/* Message prose (docs/27 §9) */
+.prose-nova {
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.prose-nova > * + * {
+  margin-top: 12px;
+}
+.prose-nova h1 { font-size: 22px; font-weight: 600; margin-top: 20px; }
+.prose-nova h2 { font-size: 19px; font-weight: 600; margin-top: 18px; }
+.prose-nova h3 { font-size: 17px; font-weight: 600; margin-top: 16px; }
+.prose-nova ul { list-style: disc; padding-left: 1.4em; }
+.prose-nova ol { list-style: decimal; padding-left: 1.4em; }
+.prose-nova li + li { margin-top: 4px; }
+.prose-nova a { color: var(--primary); text-decoration: none; }
+.prose-nova a:hover { text-decoration: underline; }
+.prose-nova blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  color: var(--muted-foreground);
+}
+.prose-nova :not(pre) > code {
+  background: var(--code-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+}
+.prose-nova hr { border-color: var(--border); }
+.prose-nova table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.prose-nova th { background: var(--surface); text-align: left; font-weight: 600; }
+.prose-nova th, .prose-nova td { border: 1px solid var(--border); padding: 6px 10px; }
+.prose-nova .katex-display { overflow-x: auto; overflow-y: hidden; }
+
+.shiki,
+.shiki span {
+  background-color: transparent !important;
+}
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+}
+
+@keyframes nova-blink {
+  50% { opacity: 0; }
+}
+.nova-cursor::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--primary);
+  animation: nova-blink 1s steps(1) infinite;
+}
+
+@keyframes nova-dot {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

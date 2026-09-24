@@ -1,0 +1,10 @@
+User-Agent: *
+Allow: /
+Disallow: /api/
+Disallow: /c/
+Disallow: /chat
+Disallow: /quick
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /admin
+Disallow: /reset-password

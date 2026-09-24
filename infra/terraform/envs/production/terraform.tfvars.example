@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (gitignored). Secrets can instead come from TF_VAR_* env vars.
+domain              = "nova.example.com"
+acm_certificate_arn = "arn:aws:acm:ap-south-1:123456789012:certificate/xxxxxxxx"
+ecr_registry        = "123456789012.dkr.ecr.ap-south-1.amazonaws.com"
+image_tag           = "git-sha"
+files_bucket_name   = "nova-example-files"
+alert_emails        = ["oncall@example.com"]
+# sandbox_ami_id    = "ami-xxxxxxxx" # AMI with gVisor (runsc) installed
+# smtp_username / smtp_password: SES SMTP credentials

@@ -1,0 +1,2 @@
+{"id":"tool-001","suite":"tool_use","input":{"message":"Use the calculator: what is 48213 * 9173?"},"expected":{"tool":"calculator","numeric":442257849},"tags":["calculator"]}
+{"id":"tool-002","suite":"tool_use","input":{"message":"Compute (2**31 - 1) mod 97 exactly."},"expected":{"numeric":65},"tags":["math"]}

@@ -1,0 +1,5 @@
+{"id":"qa-001","suite":"general_qa","input":{"message":"What is the capital of Australia? Answer in one short sentence."},"expected":{"must_include":["Canberra"],"max_words":25},"tags":["fact"]}
+{"id":"qa-002","suite":"general_qa","input":{"message":"How many bits are in a byte?"},"expected":{"numeric":8},"tags":["fact"]}
+{"id":"qa-003","suite":"general_qa","input":{"message":"Which planet is known as the Red Planet?"},"expected":{"must_include":["Mars"]},"tags":["fact"]}
+{"id":"qa-004","suite":"general_qa","input":{"message":"What is the chemical symbol for gold?"},"expected":{"regex":"\\bAu\\b"},"tags":["fact"]}
+{"id":"qa-005","suite":"general_qa","input":{"message":"In what year did India become independent?"},"expected":{"numeric":1947},"tags":["fact","india"]}

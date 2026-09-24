@@ -1,0 +1,48 @@
+# TLS: CADDY_TLS = your email (Let's Encrypt) in production, or "internal" for local tests.
+{$DOMAIN} {
+	tls {$CADDY_TLS}
+	encode zstd gzip {
+		# Only these types; text/event-stream (chat streaming) must never be compressed (docs/13 §11).
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type text/plain*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type image/svg+xml*
+		}
+	}
+	reverse_proxy web:3000 {
+		flush_interval -1
+		transport http {
+			read_timeout 0
+		}
+	}
+	# Security headers on every response, including static assets the app's proxy doesn't touch.
+	# "?" = only if the app didn't set it (pages keep the app's own, stricter values).
+	header {
+		-Server
+		?Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		?X-Content-Type-Options "nosniff"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		?Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+		?Cross-Origin-Resource-Policy "same-origin"
+		# Pages get a per-request nonce CSP from the app; anything without one gets a strict default.
+		?Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+	}
+}
+
+files.{$DOMAIN} {
+	tls {$CADDY_TLS}
+	request_body {
+		max_size 60MB
+	}
+	header {
+		-Server
+		?Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		?X-Content-Type-Options "nosniff"
+		Cross-Origin-Resource-Policy "same-site"
+	}
+	# Keep the public Host header: presigned URLs are signed for files.<domain>.
+	reverse_proxy minio:9000
+}

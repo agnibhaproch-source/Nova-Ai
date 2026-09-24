@@ -1,0 +1,74 @@
+{
+  "name": "nova-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nova Quick Chat desktop app: a floating chat window on a global shortcut",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "ai.nova.quickchat",
+    "productName": "Nova",
+    "files": [
+      "src/**",
+      "assets/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSScreenCaptureUsageDescription": "Nova takes screenshots when you press Option+\\ so you can ask about what's on screen."
+      },
+      "identity": null,
+      "files": [
+        "!node_modules/@koromix/koffi-{linux,win32,android,freebsd,openbsd}-*{,/**}"
+      ],
+      "x64ArchFiles": "Contents/Resources/app.asar.unpacked/node_modules/@koromix/koffi-darwin-*/**"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Nova-win.${ext}",
+      "files": [
+        "!node_modules/@koromix/koffi-{linux,darwin,android,freebsd,openbsd}-*{,/**}"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "artifactName": "Nova-linux.${ext}",
+      "files": [
+        "!node_modules/koffi{,/**}",
+        "!node_modules/@koromix{,/**}"
+      ]
+    },
+    "icon": "assets/icon.png",
+    "artifactName": "Nova-${os}.${ext}",
+    "dmg": {
+      "title": "Nova",
+      "artifactName": "Nova-mac.dmg"
+    },
+    "afterSign": "scripts/after-sign.js"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "koffi": "3.3.1"
+  }
+}

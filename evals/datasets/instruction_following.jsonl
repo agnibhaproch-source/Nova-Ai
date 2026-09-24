@@ -1,0 +1,4 @@
+{"id":"if-001","suite":"instruction_following","input":{"message":"List exactly three benefits of regular exercise as a bulleted list, nothing else."},"expected":{"bullet_count":3},"tags":["format"]}
+{"id":"if-002","suite":"instruction_following","input":{"message":"Describe the ocean in at most 15 words."},"expected":{"max_words":15},"tags":["length"]}
+{"id":"if-003","suite":"instruction_following","input":{"message":"Reply with only the word YES in capital letters."},"expected":{"regex":"^\\s*YES\\.?\\s*$"},"tags":["format"]}
+{"id":"if-004","suite":"instruction_following","input":{"message":"Write a haiku about rain. Do not use the word 'water'."},"expected":{"must_not_include":["water"]},"tags":["constraint"]}

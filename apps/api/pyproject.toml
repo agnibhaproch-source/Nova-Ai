@@ -1,0 +1,85 @@
+[project]
+name = "nova-api"
+version = "0.1.0"
+description = "NOVA AI backend (FastAPI + ARQ worker)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "gunicorn>=23",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "email-validator>=2.2",
+  "sqlalchemy[asyncio]>=2.0.36",
+  "asyncpg>=0.30",
+  "alembic>=1.14",
+  "pgvector>=0.3.6",
+  "redis>=5.2",
+  "arq>=0.26",
+  "groq>=0.13",
+  "httpx>=0.28",
+  "argon2-cffi>=23.1",
+  "structlog>=24.4",
+  "pyyaml>=6.0",
+  "jinja2>=3.1",
+  "user-agents>=2.2",
+  "aiosmtplib>=3.0",
+  "cachetools>=5.5",
+  "sentry-sdk[fastapi]>=2.19",
+  "aioboto3>=15.5.0",
+  "python-magic>=0.4.27",
+  "pillow>=12.3.0",
+  "pypdf>=6.19.0",
+  "python-docx>=1.2.0",
+  "openpyxl>=3.1.5",
+  "python-pptx>=1.0.2",
+  "charset-normalizer>=3.5.1",
+  "trafilatura>=2.2.0",
+  "razorpay>=2.0.1",
+  "python-multipart>=0.0.32",
+  "cryptography>=50.0.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=6.0",
+  "respx>=0.21",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "types-pyyaml",
+  "types-cachetools",
+  "reportlab>=5.0.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "ASYNC", "T20", "TID", "RUF"]
+ignore = ["B008", "RUF012", "A005", "RUF001", "RUF002", "RUF003", "UP046", "N818", "SIM105"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"openai".msg = "Groq is the only LLM provider (docs/00 R1)."
+"anthropic".msg = "Groq is the only LLM provider (docs/00 R1)."
+"litellm".msg = "Groq is the only LLM provider (docs/00 R1)."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["T20", "ARG", "E501"]
+"alembic/**" = ["E501", "E402", "F401"]
+"scripts/**" = ["T20"]  # CLI scripts report to stdout
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+strict = true
+ignore_missing_imports = true

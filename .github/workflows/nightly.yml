@@ -1,0 +1,33 @@
+name: nightly
+on:
+  schedule: [{ cron: "0 21 * * *" }]   # 02:30 IST
+  workflow_dispatch:
+permissions: { contents: read }
+
+jobs:
+  e2e-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: sudo apt-get update && sudo apt-get install -y libmagic1
+      - run: ./scripts/ci_env.sh
+      - run: docker compose up -d --wait postgres redis minio mailpit && docker compose up minio-init
+      - run: pnpm install --frozen-lockfile
+      - working-directory: apps/api
+        run: uv sync --frozen && uv run alembic upgrade head
+      - working-directory: apps/web
+        run: node ../desktop/node_modules/electron/install.js && pnpm exec playwright install --with-deps && xvfb-run -a pnpm exec playwright test
+        env: { CI: "true" }
+
+  sandbox-real-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: docker build -t nova-sandbox-python:dev infra/docker/sandbox-python
+      - working-directory: apps/sandbox-runner
+        run: uv sync --frozen && uv run pytest -q
