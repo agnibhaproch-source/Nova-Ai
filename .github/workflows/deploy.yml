@@ -43,7 +43,7 @@ jobs:
           host: "${{ secrets.DEPLOY_HOST }}"
           username: "${{ secrets.DEPLOY_USER }}"
           key: "${{ secrets.DEPLOY_SSH_KEY }}"
-          source: "infra/deploy/docker-compose.prod.yml,infra/deploy/Caddyfile,infra/deploy/backup.sh,infra/docker/postgres/init"
+          source: "infra/deploy/docker-compose.prod.yml,infra/deploy/Caddyfile,infra/deploy/backup.sh,infra/deploy/restore.sh,infra/deploy/storage-init.sh,infra/docker/postgres/init"
           target: "/opt/nova"
       - name: pull, migrate, restart
         uses: appleboy/ssh-action@v1.0.3

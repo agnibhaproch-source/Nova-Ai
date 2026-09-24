@@ -88,7 +88,7 @@ Update this table when a phase completes (`00_MASTER_INSTRUCTION.md` §6).
 
 **Dependencies:** Phase 2 (attachments to messages).
 
-**Files affected:** API `app/models/{file,conversation_file,moderation_flag,data_export}.py`, `app/files/{storage,validation,scanner}.py`, `app/services/{file_service,export_service,moderation_service}.py`, `app/api/v1/files.py`, conversation file sub-routes, avatar routes, export routes, `/messages/{id}/report`, `app/workers/tasks/{files,exports}.py` (validation/scan stage + image derivatives; document stages come in Phase 4), purge file jobs. Web `src/features/files/**`, attachment tray/chips, library dialog, drag-and-drop, avatar uploader, export UI, report dialog. Infra: MinIO init CORS, ClamAV service.
+**Files affected:** API `app/models/{file,conversation_file,moderation_flag,data_export}.py`, `app/files/{storage,validation,scanner}.py`, `app/services/{file_service,export_service,moderation_service}.py`, `app/api/v1/files.py`, conversation file sub-routes, avatar routes, export routes, `/messages/{id}/report`, `app/workers/tasks/{files,exports}.py` (validation/scan stage + image derivatives; document stages come in Phase 4), purge file jobs. Web `src/features/files/**`, attachment tray/chips, library dialog, drag-and-drop, avatar uploader, export UI, report dialog. Infra: storage-init bucket CORS, ClamAV service.
 
 **Database changes:** `0008_files`, `0009_moderation_exports`.
 
@@ -98,7 +98,7 @@ Update this table when a phase completes (`00_MASTER_INSTRUCTION.md` §6).
 
 **Frontend:** upload with progress (XHR), status polling, attachment chips in composer and messages, image thumbnails + lightbox (display only), library dialog, settings data export, profile avatar.
 
-**Tests:** validation matrix (types, sizes, mismatch, zip bomb, macros, encrypted PDF detection), presigned POST flow against MinIO, ownership tests, deletion purge, export ZIP contents (AC-11), E2E upload flow.
+**Tests:** validation matrix (types, sizes, mismatch, zip bomb, macros, encrypted PDF detection), presigned POST flow against the S3-compatible dev storage (RustFS), ownership tests, deletion purge, export ZIP contents (AC-11), E2E upload flow.
 
 **Acceptance criteria:**
 1. Uploading each supported type succeeds end-to-end. In this phase the worker runs only the validation + scan stages; documents then become `ready` with `files.metadata.indexed=false` (downloadable and attachable; the UI labels them "Not indexed yet"). Phase 4 adds extraction/indexing, after which `ready` always means indexed and the label disappears.

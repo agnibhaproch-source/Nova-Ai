@@ -70,7 +70,7 @@ and never shown again.
 Browser / desktop app ──► Next.js website (pages + /api proxy) ──► FastAPI backend ──► Groq API
                                                                   ├─ PostgreSQL 16 + pgvector
                                                                   ├─ Redis (streams, limits, queues)
-                                                                  ├─ S3-compatible storage (MinIO locally)
+                                                                  ├─ S3-compatible storage (RustFS locally)
                                                                   └─ background worker · code sandbox
 ```
 
@@ -78,7 +78,7 @@ Browser / desktop app ──► Next.js website (pages + /api proxy) ──► F
 |---|---|
 | Website | Next.js 16, React 19, TypeScript, Tailwind CSS, TanStack Query, Zustand |
 | Backend | Python 3.12, FastAPI, SQLAlchemy (async), Alembic, ARQ workers |
-| Data | PostgreSQL 16 + pgvector, Redis 7, S3 / MinIO |
+| Data | PostgreSQL 16 + pgvector, Redis 7, S3 (RustFS locally) |
 | AI | Groq only (official `groq` SDK) |
 | Desktop | Electron 44, electron-builder |
 | Tests | pytest, Vitest, Playwright (website, extension and desktop), k6 |
@@ -120,7 +120,7 @@ make secrets
 
 `make secrets` prints three random values. Open `.env` in any editor and replace the three
 `CHANGE_ME_generate_…` lines with them (`AUTH_SECRET`, `API_PROXY_SHARED_SECRET`,
-`SANDBOX_RUNNER_TOKEN`). The `CHANGE_ME_dev_minio_…` values can stay as they are for local use.
+`SANDBOX_RUNNER_TOKEN`). The `CHANGE_ME_dev_storage_…` values can stay as they are for local use.
 Never commit `.env`.
 
 ### 4. Start it
@@ -142,7 +142,7 @@ docker compose ps
 |---|---|
 | NOVA AI website | http://localhost:3000 |
 | Test inbox for password-reset emails (Mailpit) | http://localhost:8025 |
-| File storage console (MinIO) | http://localhost:9001 |
+| File storage console (RustFS) | http://localhost:9001 |
 
 Create an account at http://localhost:3000/signup, start a new chat, paste your Groq key into the
 **"Paste your Groq API key"** box, and ask something.
@@ -251,7 +251,7 @@ For working on the code with hot reload, run the data services in Docker and the
 ```bash
 pnpm install                        # website, desktop app, tools
 (cd apps/api && uv sync)            # backend
-make infra                          # Postgres, Redis, MinIO, Mailpit in Docker
+make infra                          # Postgres, Redis, S3 storage (RustFS), Mailpit in Docker
 ```
 
 In `.env`, point the apps at `localhost` instead of the container names:

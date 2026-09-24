@@ -1,7 +1,7 @@
 # Single-server deployment
 
 Runs the whole stack on one Linux host with Docker: Caddy (automatic HTTPS) → web → API, plus the
-worker, Postgres (pgvector), Redis and MinIO. Good for launch and small/medium traffic; the AWS
+worker, Postgres (pgvector), Redis and S3-compatible storage (RustFS). Good for launch and small/medium traffic; the AWS
 reference architecture (docs/47 §1) is the scale-out path.
 
 ## One-time server setup

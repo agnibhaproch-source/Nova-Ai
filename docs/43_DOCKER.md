@@ -10,8 +10,8 @@
 | `migrate` | build `apps/api` target `dev` | — | One-shot `alembic upgrade head` | default |
 | `postgres` | `pgvector/pgvector:pg16` | 5432 | Database | default |
 | `redis` | `redis:7-alpine` | 6379 | Cache/queues/streams | default |
-| `minio` | `minio/minio` (pinned tag) | 9000, 9001 | S3-compatible storage + console | default |
-| `minio-init` | `minio/mc` (pinned) | — | Creates bucket, CORS, private policy | default |
+| `storage` | `rustfs/rustfs` (pinned) | 9000, 9001 | S3-compatible storage + console (ADR 0003) | default |
+| `storage-init` | `amazon/aws-cli` (pinned) | — | Creates the bucket and its CORS rule (private by default) | default |
 | `mailpit` | `axllent/mailpit` (pinned) | 8025 (UI), 1025 | Dev SMTP | default |
 | `embeddings` | `ghcr.io/huggingface/text-embeddings-inference:<cpu tag pinned>` | 8081 | Embedding server running `EMBEDDING_MODEL` | default |
 | `sandbox-runner` | build `apps/sandbox-runner` | 8090 | Code execution (dev mode, runc) | `tools` |
@@ -19,7 +19,7 @@
 | `clamav` | `clamav/clamav` (pinned) | — | Malware scanning | `security` |
 | `groq-stub` | build `apps/api` target `dev`, command runs `tests/fakes/groq_stub_server.py` | 8099 | Test-only Groq emulator | `test` |
 
-Implementation notes: `migrate`, `api`, `worker`, `web` run under the compose profile `app` (`make up`); `make infra` starts only the data services so the app can run on the host with hot reload (`make dev-api`, `make dev-worker`, `make dev-web`). MinIO images come from `quay.io/minio/*` (Docker Hub images were discontinued). Host ports for Postgres/Redis are configurable via `POSTGRES_HOST_PORT` / `REDIS_HOST_PORT` in `.env`.
+Implementation notes: `migrate`, `api`, `worker`, `web` run under the compose profile `app` (`make up`); `make infra` starts only the data services so the app can run on the host with hot reload (`make dev-api`, `make dev-worker`, `make dev-web`). Storage is RustFS (`rustfs/rustfs`, pinned), because MinIO stopped publishing container images (ADR 0003); the bucket is prepared by `storage-init` (`amazon/aws-cli`). Host ports for Postgres/Redis are configurable via `POSTGRES_HOST_PORT` / `REDIS_HOST_PORT` in `.env`.
 
 The spec's minimum services (web, api, postgres, redis) are all present; the others are required for the documented features to function locally without fakes.
 
@@ -110,7 +110,7 @@ x-api-env: &api-env
   environment:
     DATABASE_URL: postgresql+asyncpg://nova:nova@postgres:5432/nova
     REDIS_URL: redis://redis:6379/0
-    S3_ENDPOINT: http://minio:9000
+    S3_ENDPOINT: http://storage:9000
     S3_PUBLIC_ENDPOINT: http://localhost:9000
     EMBEDDING_ENDPOINT: http://embeddings:80
     SMTP_HOST: mailpit
@@ -133,23 +133,20 @@ services:
     ports: ["6379:6379"]
     healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 20 }
 
-  minio:
-    image: minio/minio:<pinned>
-    command: server /data --console-address ":9001"
-    environment: { MINIO_ROOT_USER: ${S3_ACCESS_KEY}, MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY} }
-    volumes: [miniodata:/data]
+  storage:                     # RustFS: S3-compatible (MinIO no longer publishes images; ADR 0003)
+    image: rustfs/rustfs:1.0.0
+    environment: { RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}, RUSTFS_SECRET_KEY: ${S3_SECRET_KEY} }
+    volumes: [storagedata:/data]
     ports: ["9000:9000", "9001:9001"]
-    healthcheck: { test: ["CMD", "mc", "ready", "local"], interval: 5s, timeout: 3s, retries: 20 }
+    healthcheck: { test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"], interval: 5s, timeout: 3s, retries: 20 }
 
-  minio-init:
-    image: minio/mc:<pinned>
-    depends_on: { minio: { condition: service_healthy } }
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      "mc alias set local http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY &&
-       mc mb -p local/$$S3_BUCKET && mc anonymous set none local/$$S3_BUCKET"
+  storage-init:                # creates the bucket + CORS for presigned uploads (infra/deploy/storage-init.sh)
+    image: amazon/aws-cli:2.37.2
+    depends_on: { storage: { condition: service_healthy } }
     env_file: .env
-    # Bucket CORS for presigned POST from http://localhost:3000 — verify the mc/MinIO CORS command for the pinned version
+    environment: { S3_CORS_ORIGINS: "${APP_URL},http://localhost:3000,http://localhost:3100" }
+    volumes: ["./infra/deploy/storage-init.sh:/storage-init.sh:ro"]
+    entrypoint: ["/bin/sh", "/storage-init.sh"]
 
   embeddings:
     image: ghcr.io/huggingface/text-embeddings-inference:<cpu-version-pinned>
@@ -177,7 +174,7 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
-      minio-init: { condition: service_completed_successfully }
+      storage-init: { condition: service_completed_successfully }
       embeddings: { condition: service_healthy }
     healthcheck: { test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"], interval: 10s, timeout: 3s, retries: 10 }
 
@@ -215,18 +212,18 @@ services:
     image: clamav/clamav:<pinned>
     healthcheck: { test: ["CMD", "clamdcheck.sh"], interval: 30s, timeout: 10s, retries: 20 }
 
-volumes: { pgdata: {}, redisdata: {}, miniodata: {}, hfcache: {} }
+volumes: { pgdata: {}, redisdata: {}, storagedata: {}, hfcache: {} }
 ```
 
 ## 4. Networking
 
 - Single default bridge network `nova_default`; services address each other by name.
 - Host ports are exposed for developer tooling only. In production nothing but the load balancer is public.
-- The browser uses `http://localhost:3000` (web) and `http://localhost:9000` (MinIO presigned URLs). API port 8000 is exposed for debugging but the API still requires `X-Nova-Proxy-Secret` (use `make api-shell`/curl helper that adds it).
+- The browser uses `http://localhost:3000` (web) and `http://localhost:9000` (presigned storage URLs). API port 8000 is exposed for debugging but the API still requires `X-Nova-Proxy-Secret` (use `make api-shell`/curl helper that adds it).
 
 ## 5. Health checks & startup order
 
-`postgres`/`redis`/`minio` healthy → `migrate` completes → `minio-init` completes → `embeddings` healthy (first start downloads the model; may take minutes) → `api` healthy → `worker`, `web`.
+`postgres`/`redis`/`storage` healthy → `migrate` completes → `storage-init` completes → `embeddings` healthy (first start downloads the model; may take minutes) → `api` healthy → `worker`, `web`.
 
 ## 6. Volumes & data
 

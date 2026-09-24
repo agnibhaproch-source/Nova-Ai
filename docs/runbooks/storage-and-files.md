@@ -1,6 +1,6 @@
 # Storage errors / files stuck
 
-**Check:** S3/MinIO status; Admin → Errors → `files` (e.g. `SCAN_UNAVAILABLE`, `EXTRACTION_FAILED`);
+**Check:** S3 / RustFS status; Admin → Errors → `files` (e.g. `SCAN_UNAVAILABLE`, `EXTRACTION_FAILED`);
 Admin → Health → `storage`, `files_stuck`.
 
 **Fix**

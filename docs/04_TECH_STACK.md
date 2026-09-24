@@ -155,7 +155,7 @@ Prohibited dependencies: `openai`, `anthropic`, `google-generativeai`/`google-ge
 
 ### S3-compatible object storage
 - **Why:** durable, cheap, scalable blob storage with presigned URLs.
-- **Where:** uploads, avatars, data exports, audio. Dev: MinIO. Prod: AWS S3 (reference) or Cloudflare R2.
+- **Where:** uploads, avatars, data exports, audio. Dev: RustFS (S3-compatible; ADR 0003). Prod: AWS S3 (reference) or Cloudflare R2.
 - **Not for:** serving public static assets of the app (Next.js/Vercel does that).
 
 ## 5. AI

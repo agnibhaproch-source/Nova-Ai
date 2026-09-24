@@ -69,7 +69,7 @@ make migrate-check                  # fails if models and migrations diverge (al
 ## 7. Starting services
 
 ```bash
-make up            # web, api, worker, postgres, redis, minio, mailpit, embeddings
+make up            # web, api, worker, postgres, redis, storage (RustFS), mailpit, embeddings
 make up-tools      # + sandbox-runner and searxng (build sandbox image first: make sandbox-image)
 make up-security   # + clamav (set CLAMAV_ENABLED=true)
 ```
@@ -78,7 +78,7 @@ URLs:
 - App: http://localhost:3000
 - API docs (dev only): http://localhost:3000/api/v1/docs (proxied; Swagger UI enabled only when `APP_ENV=development`)
 - Mailpit: http://localhost:8025
-- MinIO console: http://localhost:9001
+- Storage console (RustFS): http://localhost:9001
 
 Running web or api outside Docker (faster iteration): stop the container (`docker compose stop web`) and run `pnpm --filter web dev` with `API_INTERNAL_URL=http://localhost:8000`; or `cd apps/api && uv run uvicorn app.main:app --reload` with `.env` hostnames pointed at `localhost`.
 
@@ -122,7 +122,7 @@ pnpm --filter web build   # standalone Next.js build (runs bundle secret check a
 | `embeddings` unhealthy for long | First run downloads the model; check `make logs s=embeddings`; ensure enough RAM |
 | API exits `startup.config_invalid` | Read the named variable in the log; check `.env` and `models.yaml` |
 | `readyz` fails `migrations` | `make migrate` |
-| Uploads fail with CORS | Re-run `minio-init`; confirm `APP_URL` matches browser origin |
+| Uploads fail with CORS | Re-run `docker compose up storage-init`; confirm `APP_URL` matches browser origin |
 | Streams buffer in browser | Ensure you're on `localhost:3000` (proxy) not a custom proxy that buffers |
 | Code execution unavailable | `make sandbox-image && make up-tools`; set `SANDBOX_RUNNER_URL` |
 

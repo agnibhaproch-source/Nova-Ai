@@ -93,13 +93,13 @@ Column "Svc": `A` api, `W` worker, `R` sandbox-runner, `N` Next.js server, `B` b
 
 | Variable | Class | Svc | Required | Default | Description |
 |---|---|---|---|---|---|
-| `S3_ENDPOINT` | server-only | A W | yes (dev: MinIO) | `http://minio:9000` | Empty for AWS default endpoint |
+| `S3_ENDPOINT` | server-only | A W | yes (dev: RustFS) | `http://storage:9000` | Empty for AWS default endpoint |
 | `S3_PUBLIC_ENDPOINT` | server-only | A N | no | `http://localhost:9000` (dev) | Browser-reachable endpoint for presigned URLs; Next.js uses its host for CSP |
 | `S3_REGION` | server-only | A W | yes | `us-east-1` | |
 | `S3_BUCKET` | server-only | A W | yes | `nova-dev` | |
 | `S3_ACCESS_KEY` | server-only (secret) | A W | yes* | — | *Omit when using IAM roles in prod |
 | `S3_SECRET_KEY` | server-only (secret) | A W | yes* | — | |
-| `S3_FORCE_PATH_STYLE` | server-only | A W | no | `true` (dev) | MinIO needs path style |
+| `S3_FORCE_PATH_STYLE` | server-only | A W | no | `true` (dev) | Local S3-compatible storage needs path style |
 | `CLAMAV_ENABLED` | server-only | W | no | `false` (dev), `true` (prod required) | |
 | `CLAMAV_HOST` / `CLAMAV_PORT` | server-only | W | if enabled | `clamav` / `3310` | |
 

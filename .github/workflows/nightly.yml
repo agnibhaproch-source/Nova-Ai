@@ -15,7 +15,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: sudo apt-get update && sudo apt-get install -y libmagic1
       - run: ./scripts/ci_env.sh
-      - run: docker compose up -d --wait postgres redis minio mailpit && docker compose up minio-init
+      - run: docker compose up -d --wait postgres redis storage mailpit && docker compose up storage-init
       - run: pnpm install --frozen-lockfile
       - working-directory: apps/api
         run: uv sync --frozen && uv run alembic upgrade head

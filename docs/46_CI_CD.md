@@ -25,7 +25,6 @@ jobs:
       postgres: { image: pgvector/pgvector:pg16, env: {POSTGRES_USER: nova, POSTGRES_PASSWORD: nova, POSTGRES_DB: nova_test}, ports: ["5432:5432"], options: >-
           --health-cmd "pg_isready -U nova" --health-interval 5s --health-retries 20 }
       redis: { image: redis:7-alpine, ports: ["6379:6379"] }
-      minio: { image: "bitnami/minio:<pinned>", env: {MINIO_ROOT_USER: test, MINIO_ROOT_PASSWORD: testtesttest}, ports: ["9000:9000"] }
     steps:
       - checkout
       - setup uv + python 3.12 (cache)

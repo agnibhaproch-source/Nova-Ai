@@ -24,7 +24,7 @@ Alternatives that meet the requirements (Render, Fly.io, Google Cloud Run + Clou
 
 ## 1b. Single-server option (implemented)
 
-`infra/deploy/`: one Linux host running Caddy (automatic HTTPS; `files.<domain>` → MinIO for presigned uploads) → web → API, plus worker, Postgres (pgvector), Redis, MinIO; optional sandbox runner on gVisor. `.github/workflows/deploy.yml` builds the four images to GHCR (tag `sha-…`), copies the compose files over SSH, pulls, migrates (one-off `migrate` service before the API starts) and smoke-tests. Rollback = previous `IMAGE_TAG`. Backups: `infra/deploy/backup.sh` (pg_dump + object mirror, ship off-host). See `infra/deploy/README.md`.
+`infra/deploy/`: one Linux host running Caddy (automatic HTTPS; `files.<domain>` → RustFS (S3-compatible) for presigned uploads) → web → API, plus worker, Postgres (pgvector), Redis, RustFS storage; optional sandbox runner on gVisor. `.github/workflows/deploy.yml` builds the four images to GHCR (tag `sha-…`), copies the compose files over SSH, pulls, migrates (one-off `migrate` service before the API starts) and smoke-tests. Rollback = previous `IMAGE_TAG`. Backups: `infra/deploy/backup.sh` (pg_dump + object mirror, ship off-host). See `infra/deploy/README.md`.
 
 ## 2. Environments
 

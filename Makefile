@@ -6,8 +6,8 @@ WEB := apps/web
 .PHONY: infra up down logs migrate revision migrate-check seed secrets dev-api dev-worker dev-web \
         stub up-tools sandbox-image bundle-check e2e test-runner load evals desktop desktop-dist desktop-release desktop-release-all tf-validate lint format typecheck test test-api test-web check build providers-check
 
-infra:            ## postgres, redis, minio, mailpit
-	docker compose up -d postgres redis minio minio-init mailpit
+infra:            ## postgres, redis, S3 storage (RustFS), mailpit
+	docker compose up -d postgres redis storage storage-init mailpit
 
 up:               ## full stack in containers
 	docker compose --profile app up -d --build
@@ -57,7 +57,7 @@ format:
 
 typecheck:
 	cd $(API) && uv run mypy app
-	cd $(WEB) && pnpm exec tsc --noEmit
+	cd $(WEB) && pnpm typecheck
 
 test-api:
 	cd $(API) && uv run pytest -q $(if $(k),-k "$(k)",)

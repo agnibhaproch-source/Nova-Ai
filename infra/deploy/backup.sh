@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nightly backup: Postgres (pg_dump custom format) + object storage mirror (docs/50).
+# Nightly backup: Postgres (pg_dump custom format) + a copy of the file storage bucket (docs/50).
 # Cron: 30 2 * * * /opt/nova/infra/deploy/backup.sh   — then ship $BACKUP_DIR off the host.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -14,7 +14,7 @@ mkdir -p "$DEST/files"
 $C exec -T postgres pg_dump -U nova -d nova --format=custom > "$DEST/nova-$STAMP.dump.tmp"
 mv "$DEST/nova-$STAMP.dump.tmp" "$DEST/nova-$STAMP.dump"
 docker run --rm --network nova-prod_default -v "$DEST/files:/backup" \
-  -e S3_ACCESS_KEY -e S3_SECRET_KEY -e S3_BUCKET --entrypoint /bin/sh quay.io/minio/mc:latest -c \
-  'mc alias set local http://minio:9000 "$S3_ACCESS_KEY" "$S3_SECRET_KEY" >/dev/null && mc mirror --quiet --overwrite "local/$S3_BUCKET" /backup'
+  -e AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY" -e AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY" -e AWS_DEFAULT_REGION=us-east-1 \
+  amazon/aws-cli:2.37.2 --endpoint-url http://storage:9000 s3 sync --only-show-errors "s3://$S3_BUCKET" /backup
 find "$DEST" -maxdepth 1 -name 'nova-*.dump' -mtime +"$KEEP_DAYS" -delete
 echo "backup ok: $DEST/nova-$STAMP.dump (+ files/)"

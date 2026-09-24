@@ -5,7 +5,7 @@
 | Layer | Tooling | Location | Runs |
 |---|---|---|---|
 | Backend unit | pytest, pytest-asyncio | `apps/api/tests/unit` | every PR |
-| Backend integration (DB/Redis/S3) | pytest + real Postgres(pgvector) + Redis + MinIO (Compose services) | `apps/api/tests/integration` | every PR |
+| Backend integration (DB/Redis/S3) | pytest + real Postgres(pgvector) + Redis + RustFS (Compose services) | `apps/api/tests/integration` | every PR |
 | API tests (HTTP contract) | pytest + HTTPX `AsyncClient(transport=ASGITransport(app))` | `apps/api/tests/api` | every PR |
 | Security tests | pytest | `apps/api/tests/security` | every PR |
 | Sandbox runner tests | pytest | `apps/sandbox-runner/tests` | every PR (runc); nightly (gVisor) |
@@ -16,10 +16,10 @@
 
 ## 2. Backend test infrastructure
 
-- `docker-compose.test.yml` provides `postgres` (pgvector image), `redis`, `minio`; CI uses the same via service containers.
+- `docker-compose.test.yml` provides `postgres` (pgvector image), `redis`, `storage` (RustFS); CI uses the same via service containers.
 - Database: a fresh schema per test session via `alembic upgrade head`; each test runs inside a transaction with SAVEPOINT rollback (`AsyncSession` bound to a connection with nested transactions) for isolation and speed. Tests needing committed data across sessions (workers) use `truncate_all()` fixture.
 - Redis: `FLUSHDB` on DB index 15 between tests.
-- MinIO bucket `nova-test` recreated per session.
+- The storage bucket is created by `storage-init`.
 - Factories: plain async factory functions in `tests/factories.py` (`create_user(...)`, `create_conversation(...)`, …) — no global state.
 - Clock: `app.core.clock` injected; tests use `freezegun`-style fixture `frozen_time`.
 - Settings: `APP_ENV=test`, loaded from `apps/api/.env.test` (committed, no secrets).

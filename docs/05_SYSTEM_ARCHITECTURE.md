@@ -33,7 +33,7 @@
 │  Providers/adapters (only these talk to external systems):                              │
 │   GroqService → GroqProvider ─────────────────────────────────────► Groq API            │
 │   EmbeddingService → TEIEmbeddingProvider ────────────────────────► embeddings (TEI)    │
-│   StorageService (aioboto3) ──────────────────────────────────────► S3 / MinIO          │
+│   StorageService (aioboto3) ──────────────────────────────────────► S3 / RustFS         │
 │   WebSearchService → SearxngProvider | BraveProvider ─────────────► search provider     │
 │   SafeFetcher (SSRF-guarded httpx) ───────────────────────────────► public web pages    │
 │   SandboxClient ──────────────────────────────────────────────────► sandbox-runner      │

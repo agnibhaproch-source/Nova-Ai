@@ -44,5 +44,5 @@ files.{$DOMAIN} {
 		Cross-Origin-Resource-Policy "same-site"
 	}
 	# Keep the public Host header: presigned URLs are signed for files.<domain>.
-	reverse_proxy minio:9000
+	reverse_proxy storage:9000
 }

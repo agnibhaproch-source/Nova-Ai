@@ -22,7 +22,7 @@
 
 - S3 **versioning** enabled; lifecycle: noncurrent versions expire after 30 days; incomplete multipart uploads aborted after 1 day; `users/*/exports/` current versions expire after 2 days.
 - **Cross-region replication** (CRR) for `users/*/files/*` to the DR region bucket (Phase 11), replicating delete markers **off** to protect against accidental deletes, while `purge_*` jobs explicitly delete replicated objects too (a replication-aware purge deletes in both buckets).
-- MinIO (dev) has no backups.
+- Local dev storage (RustFS) has no backups. The single-server setup backs up its bucket with `infra/deploy/backup.sh` (`aws s3 sync`).
 
 ## 4. Retention summary
 
