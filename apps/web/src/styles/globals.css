@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+/* Build caches are binary; scanning them yields garbage class names that break the CSS. The
+   Docker web container has no repo-root .gitignore to exclude them automatically. */
+@source not "../../.next-e2e";
+@source not "../../test-results";
+@source not "../../playwright";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Design tokens — docs/27_UI_UX_SPECIFICATION.md §1 */
