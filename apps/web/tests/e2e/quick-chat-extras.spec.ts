@@ -62,7 +62,7 @@ test("Quick Chat has settings: opacity 100→0 and every website settings sectio
   }
 
   await slider.fill("100");
-  for (const tab of ["General", "Memory", "Billing", "API keys", "Data controls"]) {
+  for (const tab of ["General", "Memory", "Usage", "API keys", "Data controls"]) {
     await quick.getByRole("button", { name: tab, exact: true }).click();
     await expect(quick.getByRole("heading").first()).toBeVisible();
   }
