@@ -15,7 +15,7 @@ Executable plan for `52_ROADMAP.md`. Each phase ends only when its acceptance cr
 | 7 Search | implemented | — | SearXNG/Brave provider with SSRF-safe fetch; off until `WEB_SEARCH_PROVIDER` is set |
 | 8 Code execution | implemented | — | Sandbox runner verified on real Docker (network off, read-only, OOM, fork bomb, timeout). gVisor required in staging/prod |
 | 9 Voice & vision | implemented | — | Needs `GROQ_KEY_MODE=server` + STT/TTS model IDs; BYOK falls back to browser read-aloud; vision needs `GROQ_VISION_MODEL` |
-| 10 Billing & API access | implemented | — | Razorpay checkout/webhooks, API keys; needs Razorpay keys + plan ids to take payments |
+| 10 Billing & API access | API keys implemented; billing removed | — | Billing (Razorpay) and usage quotas removed for personal use (ADR 0004); the Groq key's own limits are the only ceiling |
 | 11 Production scaling | implemented | 2026-09-25 | Admin console, k6 (`infra/k6`), evals (`evals/`), runbooks, single-server production stack + deploy workflow (`infra/deploy`, verified in production mode over HTTPS), AWS Terraform (`infra/terraform`, validated; not applied), DR drill passed (docs/runbooks/restore-from-backup.md), ZAP baseline scan: 0 failures (security headers, POST auth forms, default CSP). Needs a real deploy target (server or AWS account + domain) |
 | Extra: Quick Chat & desktop | implemented | 2026-09-25 | In-page draggable window with hover-only controls, history and settings (27 §17a), browser extension (§17b), desktop app for Mac/Windows/Linux with passkey gate, Option+/ / Option+\\ / Option+Shift+Q, capture exclusion, background mode, signed Mac build (§17c), screenshots → vision incl. screenshot-only messages (§17d), drag and drop. No email verification (ADR 0002). Installers on /download. Needs Apple Developer ID / Windows code signing for warning-free installs |
 
@@ -215,6 +215,8 @@ Update this table when a phase completes (`00_MASTER_INSTRUCTION.md` §6).
 ---
 
 ## Phase 10 — Billing & API access
+
+> **Superseded in part by ADR 0004:** billing and plan quotas were removed; the API-key work below stands.
 
 **Objectives:** Razorpay subscriptions, plan enforcement, payment history, API keys, analytics dashboards.
 

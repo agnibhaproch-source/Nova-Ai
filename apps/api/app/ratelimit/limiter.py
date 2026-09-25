@@ -48,23 +48,20 @@ POLICIES: dict[str, dict[str, Rate]] = {
     "auth_password_forgot_ip": {"*": Rate(10, 3600)},
     "auth_password_forgot_email": {"*": Rate(3, 3600)},
     "api_key_auth_fail": {"*": Rate(30, 60)},
-    "api_read": {"free": Rate(120, 60), "plus": Rate(240, 60), "pro": Rate(600, 60)},
-    "api_write": {"free": Rate(60, 60), "plus": Rate(120, 60), "pro": Rate(300, 60)},
-    "chat_messages": {
-        "free": Rate(6, 60, burst=3),
-        "plus": Rate(20, 60, burst=6),
-        "pro": Rate(40, 60, burst=10),
-    },
-    "stream_resume": {"free": Rate(60, 60), "plus": Rate(60, 60), "pro": Rate(120, 60)},
+    # Per-minute abuse guards only, the same for every plan and set above Groq's own per-key
+    # limits so the Groq key is the real ceiling (ADR 0004).
+    "api_read": {"*": Rate(600, 60)},
+    "api_write": {"*": Rate(300, 60)},
+    "chat_messages": {"*": Rate(60, 60, burst=20)},
+    "stream_resume": {"*": Rate(120, 60)},
     "analytics_ingest": {"*": Rate(60, 60)},
-    "file_upload": {"free": Rate(10, 60), "plus": Rate(30, 60), "pro": Rate(60, 60)},
-    "rag_search": {"free": Rate(30, 60), "plus": Rate(60, 60), "pro": Rate(120, 60)},
-    "tool_web_search": {"free": Rate(10, 60), "plus": Rate(20, 60), "pro": Rate(40, 60)},
-    "tool_code_execution": {"free": Rate(5, 60), "plus": Rate(10, 60), "pro": Rate(20, 60)},
-    "voice_transcribe": {"free": Rate(20, 60), "plus": Rate(20, 60), "pro": Rate(40, 60)},
-    "voice_speech": {"free": Rate(20, 60), "plus": Rate(30, 60), "pro": Rate(60, 60)},
+    "file_upload": {"*": Rate(60, 60)},
+    "rag_search": {"*": Rate(120, 60)},
+    "tool_web_search": {"*": Rate(40, 60)},
+    "tool_code_execution": {"*": Rate(20, 60)},
+    "voice_transcribe": {"*": Rate(40, 60)},
+    "voice_speech": {"*": Rate(60, 60)},
     "exports": {"*": Rate(1, 86400)},
-    "webhook_razorpay": {"*": Rate(600, 60)},
     "admin": {"*": Rate(300, 60)},
 }
 FAIL_CLOSED = {
@@ -84,7 +81,7 @@ def rate_for(policy: str, plan: str = "free") -> Rate:
         # Configurable so a perf environment can load-test from few IPs (docs/40 §10).
         return Rate(get_settings().RATE_LIMIT_GLOBAL_IP_PER_MIN, 60)
     table = POLICIES[policy]
-    return table.get(plan) or table.get("*") or table["free"]
+    return table.get(plan) or table["*"]
 
 
 def _fallback_check(key: str, rate: Rate, now_ms: float) -> Decision:

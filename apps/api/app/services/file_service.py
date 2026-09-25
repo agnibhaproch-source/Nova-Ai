@@ -104,19 +104,9 @@ async def initiate(
         else int(limits.get("max_image_mb" if rule.kind == "image" else "max_document_mb", 10))
     )
     if size_bytes > max_mb * 1024 * 1024:
-        raise AppError(
-            ErrorCode.FILE_TOO_LARGE, f"This file is larger than your plan allows ({max_mb} MB)."
-        )
+        raise AppError(ErrorCode.FILE_TOO_LARGE, f"This file is larger than the {max_mb} MB limit.")
     if await _storage_used(db, p.uid) + size_bytes > int(limits.get("storage_mb", 100)) * 1024**2:
         raise AppError(ErrorCode.STORAGE_QUOTA_EXCEEDED)
-    day = datetime.now(UTC).strftime("%Y%m%d")
-    try:
-        n = int(await get_redis().incr(rkey("q", "up", p.uid, day)))
-        await get_redis().expire(rkey("q", "up", p.uid, day), 48 * 3600)
-    except Exception:
-        n = 0
-    if n > int(limits.get("uploads_per_day", 10)):
-        raise AppError(ErrorCode.QUOTA_EXCEEDED, "You've reached today's upload limit.")
     if conversation_id is not None:
         conv = await db.scalar(
             select(Conversation.id).where(

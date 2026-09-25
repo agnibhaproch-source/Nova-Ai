@@ -17,7 +17,6 @@ from pydantic import ValidationError
 from app.ai.models_registry import ModelConfig
 from app.ai.provider import LLMToolCall, ToolSchema
 from app.core.config import get_settings
-from app.core.redis import get_redis, rkey
 from app.db.session import get_sessionmaker
 from app.models import ToolCall
 from app.ratelimit import limiter
@@ -97,18 +96,6 @@ class ToolEngine:
         self.calls_per_tool: dict[str, int] = {}
         self.corrections: set[str] = set()
 
-    async def _quota_ok(self, tool: Tool) -> bool:
-        if not tool.quota_key:
-            return True
-        limit = int(self.ctx.limits.get(tool.quota_key, 0))
-        key = rkey("q", tool.name, self.ctx.user_id, datetime.now(UTC).strftime("%Y%m%d"))
-        try:
-            n = int(await get_redis().incr(key))
-            await get_redis().expire(key, 48 * 3600)
-        except Exception:
-            return True
-        return n <= limit
-
     async def execute_all(
         self, calls: list[LLMToolCall], iteration: int, next_position: Any
     ) -> list[Executed]:
@@ -147,8 +134,6 @@ class ToolEngine:
             row_id = row.id
         call_pos = next_position()
         denied = self._deny_reason(call.name, tool)
-        if denied is None and tool is not None and not await self._quota_ok(tool):
-            denied = ("QUOTA_EXCEEDED", "Daily limit for this tool reached; answer without it.")
         if denied is None and tool is not None:
             d = await limiter.check(
                 f"tool_{tool.name}" if f"tool_{tool.name}" in limiter.POLICIES else "api_write",

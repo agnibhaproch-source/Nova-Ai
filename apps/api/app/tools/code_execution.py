@@ -31,7 +31,6 @@ class CodeExecutionTool(Tool):
         "Use for calculations, data analysis and plots."
     )
     timeout_seconds = 30.0
-    quota_key = "code_executions_per_day"
     requires_preference = "code_execution_enabled"
 
     class Args(ToolArgs):

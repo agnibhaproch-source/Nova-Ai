@@ -61,7 +61,7 @@ resource "aws_security_group" "this" {
   description = "${var.name} tasks"
   vpc_id      = var.vpc_id
   egress {
-    description = "Outbound (NAT for Groq, Razorpay, email; VPC for data stores)"
+    description = "Outbound (NAT for Groq, email; VPC for data stores)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"

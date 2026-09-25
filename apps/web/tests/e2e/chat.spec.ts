@@ -24,17 +24,10 @@ test("settings sections render", async ({ page }) => {
   for (const [path, heading] of [
     ["/settings/memory", "Memory"],
     ["/settings/files", "Files"],
-    ["/settings/billing", "Plan"],
+    ["/settings/usage", "Groq API key limits"],
     ["/settings/api-keys", "API keys"],
   ] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
   }
-});
-
-test("pricing page lists plans", async ({ page }) => {
-  await page.goto("/pricing");
-  await expect(page.getByRole("heading", { name: "Simple plans" })).toBeVisible();
-  for (const plan of ["Free", "Plus", "Pro"]) await expect(page.getByRole("heading", { name: plan, exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Current plan" })).toBeVisible();
 });

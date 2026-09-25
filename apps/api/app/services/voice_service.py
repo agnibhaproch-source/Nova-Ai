@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import UTC, datetime
 from decimal import Decimal
 
 import magic
@@ -14,8 +13,6 @@ from app.ai.groq.service import get_groq_service
 from app.ai.provider import CallContext
 from app.core.config import get_settings
 from app.core.errors import AppError, ErrorCode
-from app.core.redis import get_redis, rkey
-from app.services import quota_service
 from app.services.usage_service import record as record_usage
 
 MAX_AUDIO_BYTES = 25 * 1024 * 1024
@@ -52,18 +49,6 @@ def voices() -> list[str]:
     return [v.strip() for v in get_settings().GROQ_TTS_VOICES.split(",") if v.strip()]
 
 
-async def _voice_quota(db: AsyncSession, user_id: uuid.UUID, plan_key: str, seconds: float) -> None:
-    limits = await quota_service.plan_limits(db, plan_key)
-    key = rkey("q", "vs", user_id, datetime.now(UTC).strftime("%Y%m%d"))
-    try:
-        used = float(await get_redis().incrbyfloat(key, seconds))
-        await get_redis().expire(key, 48 * 3600)
-    except Exception:
-        return
-    if used > float(limits.get("voice_minutes_per_day", 5)) * 60:
-        raise AppError(ErrorCode.QUOTA_EXCEEDED, "You've used today's voice minutes.")
-
-
 async def transcribe(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -80,7 +65,6 @@ async def transcribe(
     detected = magic.from_buffer(audio[:4096], mime=True)
     if not detected.startswith(AUDIO_TYPES) and detected != "application/octet-stream":
         raise AppError(ErrorCode.UNSUPPORTED_FILE_TYPE)
-    await _voice_quota(db, user_id, plan_key, 0)
     s = get_settings()
     assert s.GROQ_STT_MODEL
     res = await get_groq_service().transcribe(
@@ -95,7 +79,6 @@ async def transcribe(
     seconds = float(duration) if isinstance(duration, int | float) else len(audio) / 16000
     if seconds > 600:
         raise AppError(ErrorCode.AUDIO_TOO_LONG)
-    await _voice_quota(db, user_id, plan_key, seconds)
     rec = record_usage(
         db, kind="stt", model=None, usage=None, request_id=request_id, user_id=user_id
     )
@@ -129,7 +112,6 @@ async def synthesize(
     s = get_settings()
     v = voice if voice in voices() else s.GROQ_TTS_DEFAULT_VOICE
     body = speakable(text)
-    await _voice_quota(db, user_id, plan_key, len(body) / 15)
     assert s.GROQ_TTS_MODEL and v
     audio = await get_groq_service().synthesize(
         body,

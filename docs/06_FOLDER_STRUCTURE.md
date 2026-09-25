@@ -43,7 +43,6 @@ nova-ai/
 │   ├── check_bundle_secrets.sh       # scans .next output for secret patterns
 │   ├── seed_dev.py                   # dev seed (admin user, sample data) — refuses outside development
 │   ├── smoke.sh                      # post-deploy smoke test (46 §5)
-│   ├── set_razorpay_plan_ids.py      # 35 §5, 47 §9
 │   ├── cost_report.py                # 51 §1
 │   ├── restore_s3_prefix.py          # 50 §5.3
 │   └── replay_purges.py              # 50 §7
@@ -69,7 +68,6 @@ apps/web/
 │   │   ├── layout.tsx                         # <html>, fonts, ThemeProvider, QueryProvider, Toaster
 │   │   ├── globals.css → ../styles/globals.css (imported)
 │   │   ├── (marketing)/page.tsx               # Landing "/"
-│   │   ├── (marketing)/pricing/page.tsx
 │   │   ├── (auth)/layout.tsx                  # centered card layout; redirects if logged in
 │   │   ├── (auth)/login/page.tsx
 │   │   ├── (auth)/signup/page.tsx
@@ -80,7 +78,7 @@ apps/web/
 │   │   ├── (app)/chat/page.tsx                # new chat
 │   │   ├── (app)/c/[conversationId]/page.tsx  # conversation
 │   │   ├── (app)/settings/layout.tsx
-│   │   ├── (app)/settings/[section]/page.tsx  # general|profile|personalization|data|security|usage (+api-keys, billing in Phase 10)
+│   │   ├── (app)/settings/[section]/page.tsx  # general|profile|personalization|data|security|usage (+api-keys in Phase 10)
 │   │   ├── (admin)/admin/layout.tsx           # requires role admin|support (server check)
 │   │   ├── (admin)/admin/page.tsx             # dashboard
 │   │   ├── (admin)/admin/{users,users/[userId],usage,conversations,health,errors,subscriptions,payments,audit-logs,moderation,settings,models,plans,analytics}/page.tsx
@@ -99,7 +97,6 @@ apps/web/
 │   │   ├── files/{api,components,hooks}/
 │   │   ├── memory/{api,components}/
 │   │   ├── settings/{components}/
-│   │   ├── billing/{api,components,lib}/      # Razorpay checkout loader
 │   │   ├── api-keys/{api,components}/
 │   │   ├── usage/{api,components}/
 │   │   ├── voice/{components,hooks,lib}/      # MediaRecorder, playback
@@ -165,7 +162,7 @@ apps/api/
 │   │   ├── conversation_service.py message_service.py chat_service.py generation_runner.py
 │   │   ├── context_service.py memory_service.py title_service.py summary_service.py
 │   │   ├── file_service.py rag_service.py usage_service.py quota_service.py
-│   │   ├── billing_service.py api_key_service.py admin_service.py analytics_service.py
+│   │   ├── api_key_service.py admin_service.py analytics_service.py
 │   │   ├── audit_service.py export_service.py moderation_service.py settings_service.py
 │   │   ├── rag_ranking.py memory_triggers.py sensitive_filter.py voice_service.py analytics_events.py
 │   │   └── task_registry.py        # tracked background asyncio tasks (54 §3.7)
@@ -179,6 +176,7 @@ apps/api/
 │   │       ├── provider.py         # GroqProvider implements LLMProvider
 │   │       ├── converters.py       # internal messages/tools ↔ Groq wire format
 │   │       ├── errors.py           # groq exceptions → ProviderError subclasses
+│   │       ├── ratelimits.py       # the Groq key's limits from x-ratelimit-* headers (ADR 0004)
 │   │       └── service.py          # GroqService facade (retry, metrics, usage, logging)
 │   ├── embeddings/{provider.py,tei.py,service.py}
 │   ├── streaming/{events.py,broker.py,sse.py,stream_processor.py}
@@ -195,17 +193,16 @@ apps/api/
 │   │   ├── extractors/{pdf.py,docx.py,text.py,markdown.py,csv.py,xlsx.py,pptx.py,base.py}
 │   │   ├── normalizer.py chunker.py
 │   ├── files/{storage.py,validation.py,scanner.py}
-│   ├── billing/razorpay_gateway.py
 │   ├── ratelimit/{limiter.py,lua/gcra.lua,policies.py,dependencies.py}
 │   ├── api/
 │   │   ├── deps.py                 # get_db, get_principal, require_user, require_role, require_csrf, rate_limit()
 │   │   └── v1/{router.py,auth.py,users.py,models.py,conversations.py,messages.py,files.py,rag.py,
-│   │          memories.py,tools.py,voice.py,usage.py,billing.py,webhooks.py,api_keys.py,
+│   │          memories.py,tools.py,voice.py,usage.py,api_keys.py,
 │   │          analytics.py,admin.py,health.py}
 │   └── workers/
 │       ├── settings.py             # WorkerSettings (functions, cron_jobs, redis settings)
 │       ├── healthcheck.py          # container health: heartbeat freshness
-│       └── tasks/{files.py,memory.py,summary.py,title.py,exports.py,purge.py,reaper.py,usage.py,email.py,billing.py,maintenance.py}
+│       └── tasks/{files.py,memory.py,summary.py,title.py,exports.py,purge.py,reaper.py,usage.py,email.py,maintenance.py}
 ├── config/models.yaml              # model registry (env-interpolated)
 ├── alembic/{env.py,script.py.mako,versions/}
 ├── alembic.ini

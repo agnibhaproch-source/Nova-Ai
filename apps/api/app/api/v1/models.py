@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.groq import ratelimits as groq_ratelimits
 from app.ai.models_registry import get_registry
 from app.api.deps import Principal, rate_limit, require_scopes, require_user
 from app.core.errors import AppError, ErrorCode
@@ -89,11 +90,25 @@ async def capabilities(p: Principal = Depends(require_user)) -> Envelope[dict[st
     )
 
 
-@router.get("/usage/quota", operation_id="usage_quota")
-async def usage_quota(
+@router.get("/usage/current", operation_id="usage_current")
+async def usage_current(
     db: AsyncSession = Depends(get_db), p: Principal = Depends(require_scopes("usage:read"))
 ) -> Envelope[dict[str, Any]]:
-    return Envelope(data=await quota_service.quota_snapshot(db, p.uid, p.plan_key))
+    """What you've used, and the Groq key's own limits (Nova sets none of its own, ADR 0004)."""
+    reg = get_registry()
+    names = {m.groq_model_id: m for m in reg.all()}
+    groq = []
+    for model_id, snap in sorted((await groq_ratelimits.latest(p.uid)).items()):
+        m = names.get(model_id)
+        groq.append(
+            {
+                "groq_model_id": model_id,
+                "model_key": m.key if m else None,
+                "display_name": m.display_name if m else model_id,
+                **snap,
+            }
+        )
+    return Envelope(data={"totals": await quota_service.usage_totals(db, p.uid), "groq": groq})
 
 
 @router.get("/usage/summary", operation_id="usage_summary")

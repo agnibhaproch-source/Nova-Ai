@@ -8,7 +8,7 @@ locals {
   secret_key = { for k in local.secret_keys : k => "${aws_secretsmanager_secret.app.arn}:${k}::" }
   secret_keys = [
     "DATABASE_URL", "REDIS_URL", "AUTH_SECRET", "API_PROXY_SHARED_SECRET", "SANDBOX_RUNNER_TOKEN",
-    "GROQ_API_KEY", "SMTP_PASSWORD", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SENTRY_DSN",
+    "GROQ_API_KEY", "SMTP_PASSWORD", "SENTRY_DSN",
   ]
   # Settings shared by api, worker and migrate (docs/42).
   app_env = {
@@ -27,9 +27,8 @@ locals {
     SMTP_USERNAME        = var.smtp_username
     SMTP_FROM            = var.smtp_from
     SMTP_USE_TLS         = "true"
-    RAZORPAY_KEY_ID      = var.razorpay_key_id
   }
-  app_secrets = { for k in ["DATABASE_URL", "REDIS_URL", "AUTH_SECRET", "API_PROXY_SHARED_SECRET", "SANDBOX_RUNNER_TOKEN", "GROQ_API_KEY", "SMTP_PASSWORD", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SENTRY_DSN"] : k => local.secret_key[k] }
+  app_secrets = { for k in ["DATABASE_URL", "REDIS_URL", "AUTH_SECRET", "API_PROXY_SHARED_SECRET", "SANDBOX_RUNNER_TOKEN", "GROQ_API_KEY", "SMTP_PASSWORD", "SENTRY_DSN"] : k => local.secret_key[k] }
   # The api/worker may only touch their own bucket.
   s3_policy = jsonencode({
     Version = "2012-10-17"
@@ -71,8 +70,6 @@ resource "aws_secretsmanager_secret_version" "app" {
     SANDBOX_RUNNER_TOKEN    = random_password.generated["SANDBOX_RUNNER_TOKEN"].result
     GROQ_API_KEY            = var.groq_api_key
     SMTP_PASSWORD           = var.smtp_password
-    RAZORPAY_KEY_SECRET     = var.razorpay_key_secret
-    RAZORPAY_WEBHOOK_SECRET = var.razorpay_webhook_secret
     SENTRY_DSN              = var.sentry_dsn
   })
 }

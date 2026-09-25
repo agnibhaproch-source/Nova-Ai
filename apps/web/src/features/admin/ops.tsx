@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
 
-import { askReason, Badge, Bars, fmtDate, fmtNum, inr, Loadable, PageTitle, Stat, Table, useAdmin } from "./ui";
+import { askReason, Badge, Bars, fmtDate, fmtNum, Loadable, PageTitle, Stat, Table, useAdmin } from "./ui";
 
 type R = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "—" : String(v));
@@ -47,8 +47,6 @@ export function Dashboard() {
               <Stat label="Messages" value={fmtNum(d.messages)} />
               <Stat label="Tokens" value={fmtNum(d.tokens)} hint={d.estimated_cost_usd != null ? `≈ $${s(d.estimated_cost_usd)}` : undefined} />
               <Stat label="Error rate" value={`${((Number(d.error_rate) || 0) * 100).toFixed(1)}%`} />
-              <Stat label="Active subscriptions" value={fmtNum(d.active_subscriptions)} />
-              <Stat label="MRR" value={inr(Number(d.mrr_paise) || 0)} />
             </div>
             <Bars label="Messages" data={((d.series as R[]) ?? []).map((p) => ({ x: fmtDate(p.t), y: Number(p.messages) }))} />
             <h2 className="pt-2 font-medium">Top users by tokens</h2>
@@ -136,53 +134,6 @@ export function Usage() {
   );
 }
 
-export function Billing() {
-  const act = useAct();
-  const subs = useAdmin<R[]>("/subscriptions", { list: true });
-  const pays = useAdmin<R[]>("/payments", { list: true });
-  const hooks = useAdmin<R[]>("/webhook-events", { list: true });
-  return (
-    <div className="space-y-6">
-      <PageTitle title="Billing" />
-      <section>
-        <h2 className="mb-2 font-medium">Subscriptions</h2>
-        <Loadable q={subs}>
-          {(rows) => (
-            <Table head={["User", "Plan", "Status", "Period end", "Razorpay id"]} rows={rows.map((r) => [s(r.user_id).slice(0, 8), s(r.plan_key), <Badge key="b" tone={r.status === "active" ? "ok" : "neutral"}>{s(r.status)}</Badge>, fmtDate(r.current_period_end), s(r.razorpay_subscription_id)])} />
-          )}
-        </Loadable>
-      </section>
-      <section>
-        <h2 className="mb-2 font-medium">Payments</h2>
-        <Loadable q={pays}>
-          {(rows) => <Table head={["User", "Amount", "Status", "Method", "Date"]} rows={rows.map((r) => [s(r.user_id).slice(0, 8), inr(Number(r.amount_paise) || 0), s(r.status), s(r.method), fmtDate(r.created_at)])} />}
-        </Loadable>
-      </section>
-      <section>
-        <h2 className="mb-2 font-medium">Webhook events</h2>
-        <Loadable q={hooks}>
-          {(rows) => (
-            <Table
-              head={["Event", "Received", "Processed", "Error", ""]}
-              rows={rows.map((r) => [
-                s(r.event_type),
-                fmtDate(r.received_at),
-                r.processed_at ? fmtDate(r.processed_at) : <Badge key="p" tone="warn">pending</Badge>,
-                s(r.processing_error),
-                r.processing_error ? (
-                  <Button key="r" size="sm" variant="outline" onClick={() => { const reason = askReason("reprocessing"); if (reason) void act(() => api(`/admin/webhook-events/${s(r.id)}/reprocess`, { method: "POST", json: { reason } }), "Reprocessed"); }}>
-                    Reprocess
-                  </Button>
-                ) : null,
-              ])}
-            />
-          )}
-        </Loadable>
-      </section>
-    </div>
-  );
-}
-
 export function Moderation() {
   const act = useAct();
   const q = useAdmin<R[]>("/moderation/flags", { list: true });
@@ -261,9 +212,7 @@ export function Plans() {
               <div key={s(p.key)} className="rounded-xl border border-border bg-surface-raised p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <p className="font-medium">{s(p.name)}</p>
-                  <span className="text-sm text-muted-foreground">{inr(Number(p.price_paise) || 0)} / month</span>
                   <Badge tone={p.is_active ? "ok" : "bad"}>{p.is_active ? "active" : "inactive"}</Badge>
-                  <span className="text-xs text-muted-foreground">Razorpay plan: {s(p.razorpay_plan_id)}</span>
                   <div className="flex-1" />
                   <Button size="sm" variant="outline" onClick={() => { setEditing(s(p.key)); setJson(JSON.stringify(p.limits, null, 2)); }}>Edit limits</Button>
                 </div>

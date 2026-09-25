@@ -54,7 +54,6 @@ class Tool:
     description: ClassVar[str]
     Args: ClassVar[type[ToolArgs]]
     timeout_seconds: ClassVar[float] = 10.0
-    quota_key: ClassVar[str | None] = None
     requires_preference: ClassVar[str | None] = None
 
     def label(self, args: Any) -> str:

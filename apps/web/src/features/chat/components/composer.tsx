@@ -13,7 +13,7 @@ import { errorMessage } from "@/lib/api/errors";
 import type { FileInfo } from "@/lib/types";
 import { cn, uuid } from "@/lib/utils";
 
-import { usePreferences, useQuota } from "../api";
+import { usePreferences } from "../api";
 import { AttachmentChip, type Pending } from "./attachments";
 import { DictateButton } from "./voice";
 
@@ -60,7 +60,6 @@ export function Composer({ draftKey, busy, conversationId, compact, placeholder,
   const [text, setText] = useState(() => loadDraft(draftKey));
   const ref = useRef<HTMLTextAreaElement>(null);
   const { data: prefs } = usePreferences();
-  const { data: quota } = useQuota();
   const sendWithEnter = prefs?.send_with_enter ?? true;
   const { data: caps } = useCapabilities();
   const [pending, setPending] = useState<Pending[]>([]);
@@ -164,7 +163,6 @@ export function Composer({ draftKey, busy, conversationId, compact, placeholder,
   };
   const canSend = (!!text.trim() || readyIds.length > 0) && !uploading;
 
-  const remaining = quota?.messages_remaining_today;
   return (
     <div className={cn("mx-auto w-full max-w-3xl", compact ? "px-0 pb-0" : "px-2 pb-[max(8px,env(safe-area-inset-bottom))] md:px-4 md:pb-4")}>
       <div
@@ -274,9 +272,7 @@ export function Composer({ draftKey, busy, conversationId, compact, placeholder,
         </div>
       </div>
       <p className={cn("mt-2 text-center text-xs text-muted-foreground", compact && "hidden")}>
-        {remaining !== undefined && remaining <= 5
-          ? `${remaining} message${remaining === 1 ? "" : "s"} left today on ${quota?.plan_key ?? "your plan"}.`
-          : "Nova can make mistakes. Verify important info."}
+        Nova can make mistakes. Verify important info.
       </p>
     </div>
   );

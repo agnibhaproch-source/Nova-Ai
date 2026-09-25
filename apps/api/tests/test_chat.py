@@ -1,9 +1,10 @@
-"""Phase 2: conversations, streaming chat, branches, cancel, resume, quotas (docs/11–16)."""
+"""Phase 2: conversations, streaming chat, branches, cancel, resume, usage (docs/11–16, 35)."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -231,18 +232,21 @@ async def test_cross_user_access_is_404(app: Any) -> None:
             assert r.status_code == 404, r.text
 
 
-async def test_quota_exceeded(user_client: Client) -> None:
+async def test_no_app_quota_and_groq_limits_shown(user_client: Client) -> None:
+    """Nova caps nothing itself (ADR 0004): the old 50-a-day counter no longer blocks, and
+    /usage/current reports the Groq key's own limits from Groq's response headers."""
     cid = await new_conversation(user_client)
     async with get_sessionmaker()() as s:
         uid = await s.scalar(select(Conversation.user_id))
-    from app.services.quota_service import _day
-
-    await get_redis().set(rkey("q", "msg", uid, _day()), 50)
-    r = await user_client.post_c(
-        f"/api/v1/conversations/{cid}/messages", json={"content": "one more"}, headers=SSE
-    )
-    assert r.status_code == 429 and r.json()["error"]["code"] == "QUOTA_EXCEEDED"
-    assert "retry-after" in r.headers
+    day = datetime.now(UTC).strftime("%Y%m%d")
+    await get_redis().set(rkey("q", "msg", uid, day), 10_000)
+    await send(user_client, cid, "one more")
+    d = (await user_client.get("/api/v1/usage/current")).json()["data"]
+    assert d["totals"]["messages_today"] == 1 and d["totals"]["tokens_today"] > 0
+    snap = next(g for g in d["groq"] if g["model_key"] == "primary")
+    assert snap["requests_limit"] == 1000 and snap["requests_remaining"] == 999
+    assert snap["tokens_limit"] == 8000 and snap["tokens_remaining"] == 7500
+    assert snap["requests_reset_at"] and snap["tokens_reset_at"]
 
 
 async def test_conversation_lifecycle_and_search(user_client: Client, stub: Any) -> None:

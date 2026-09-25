@@ -19,8 +19,6 @@
 | Conversations (metadata) | support; content view admin + reason | `/admin/conversations*` |
 | System health | support | `/admin/health` |
 | Errors | support | `/admin/errors` |
-| Subscriptions | support | `/admin/subscriptions` |
-| Payments | support | `/admin/payments` |
 | Audit logs | support | `/admin/audit-logs` |
 | Moderation | support | `/admin/moderation/flags*` |
 | Models | support (view), admin (toggle) | `/admin/models*` |
@@ -40,7 +38,6 @@ KPI cards (value + delta vs previous period + sparkline):
 5. Estimated Groq cost (USD) — "unknown" badge if pricing missing
 6. Error rate (% of assistant messages `failed`)
 7. p95 TTFT (from `messages.time_to_first_token_ms`)
-8. Active paid subscriptions / MRR (₹)
 
 Charts: messages per hour/day (bar), tokens by model (stacked area), error rate by code (line), signups (line). Tables: top 10 users by tokens (id, email masked `p***@example.com` for support role, plan, tokens, cost), recent failures (message ids, error codes).
 
@@ -48,8 +45,8 @@ Charts: messages per hour/day (bar), tokens by model (stacked area), error rate 
 
 - Table columns: email, display name, role, status, plan, created, last login, messages (30 d), tokens (30 d).
 - Filters: search (email/name/id), status, role, plan; sort by created/last login/tokens.
-- Row click → detail page: profile summary, plan/subscription, usage chart (30 d), sessions (count, last seen; revoke all), API keys (count, prefixes; revoke all), moderation flags, recent audit events for this user (as target or actor), files count/storage.
-- Actions (admin): Suspend/Unsuspend (reason required; suspending revokes sessions and API keys, cancels active generations), Change role (user/support/admin), Plan override (sets `users.plan_key`; does not touch Razorpay; banner "manual override"), Revoke sessions, Quota override (per-limit values).
+- Row click → detail page: profile summary, usage chart (30 d), sessions (count, last seen; revoke all), API keys (count, prefixes; revoke all), moderation flags, recent audit events for this user (as target or actor), files count/storage.
+- Actions (admin): Suspend/Unsuspend (reason required; suspending revokes sessions and API keys, cancels active generations), Change role (user/support/admin), Plan override (sets `users.plan_key`; plans no longer differ, ADR 0004), Revoke sessions, Quota override (per-limit values).
 - Support role sees emails masked except domain unless they open the detail page (detail view is audited `admin.user.viewed`).
 
 ## 5. Usage
@@ -76,14 +73,11 @@ Cards with status (ok/degraded/down) and details:
 
 ## 8. Errors
 
-Aggregated counts by error code and source for the range (from `usage_records.status='error'`, `messages.error_code`, `tool_calls.error_code`, `files.error_code`, `payment_webhook_events.processing_error`). Drill-down lists recent items (ids, timestamps, user id, request_id) with a link to Sentry search by `request_id` (Sentry URL built from the `sentry_org_url` system setting, §11) — no content.
+Aggregated counts by error code and source for the range (from `usage_records.status='error'`, `messages.error_code`, `tool_calls.error_code`, `files.error_code`). Drill-down lists recent items (ids, timestamps, user id, request_id) with a link to Sentry search by `request_id` (Sentry URL built from the `sentry_org_url` system setting, §11) — no content.
 
 ## 9. Subscriptions & payments
 
-- Subscriptions table: user, plan, status, current period, cancel at period end, Razorpay subscription id (link to Razorpay dashboard URL pattern configured in settings), created.
-- Payments table: user, amount, status, method, captured at, Razorpay ids.
-- Webhook events tab: event id, type, received, processed, error; admin "Reprocess" action for failed events (idempotent; audited).
-- Refunds are performed in the Razorpay dashboard (v1); webhook `payment.refunded` (verify event name) updates status.
+Removed with billing (ADR 0004).
 
 ## 10. Audit logs
 
@@ -119,7 +113,7 @@ Typed registry in `app/services/settings_service.py`; each key has a Pydantic ty
 ## 13. Models & plans
 
 - Models: table from registry (key, display name, `groq_model_id`, enabled, admin-disabled, capabilities, context window, pricing, verification status, deprecation date); toggle enabled (admin, reason).
-- Plans: view limits; edit limits JSON through a form with validation (admin, reason). Price and Razorpay plan ids are read-only in UI.
+- Plans: view limits; edit limits JSON through a form with validation (admin, reason). Prices are not shown (no billing, ADR 0004).
 
 ## 14. Implementation notes
 

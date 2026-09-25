@@ -79,7 +79,7 @@ resource "aws_nat_gateway" "this" {
   depends_on    = [aws_internet_gateway.this]
 }
 
-# Private subnets egress through NAT (Groq, Razorpay, SES, web fetches).
+# Private subnets egress through NAT (Groq, SES, web fetches).
 resource "aws_route_table" "private" {
   count  = var.az_count
   vpc_id = aws_vpc.this.id

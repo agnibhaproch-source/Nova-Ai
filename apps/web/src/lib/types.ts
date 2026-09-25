@@ -123,13 +123,23 @@ export interface ModelInfo {
   required_plan: string | null;
 }
 
-export interface Quota {
-  plan_key: string;
-  period_resets: { daily_at: string; monthly_at: string };
-  limits: Record<string, unknown>;
-  used: { messages_today: number; tokens_month: number };
-  messages_remaining_today: number;
-  tokens_remaining_month: number;
+/** The Groq API key's own limits, as last reported by Groq for one model (ADR 0004). */
+export interface GroqLimits {
+  groq_model_id: string;
+  model_key: string | null;
+  display_name: string;
+  requests_limit: number | null;
+  requests_remaining: number | null;
+  requests_reset_at: string | null;
+  tokens_limit: number | null;
+  tokens_remaining: number | null;
+  tokens_reset_at: string | null;
+  observed_at: string;
+}
+
+export interface UsageCurrent {
+  totals: { messages_today: number; tokens_today: number; tokens_month: number };
+  groq: GroqLimits[];
 }
 
 export function citationsOf(m: Pick<Message, "parts">): Citation[] {

@@ -615,11 +615,9 @@ async def _finish(
         assert final is not None
         await db.refresh(final)
         serialized = (await message_service.serialize(db, [final]))[0]
-        snapshot = await quota_service.quota_snapshot(db, job.user_id, job.plan_key)
         user_msg = (
             await db.get(Message, final.parent_message_id) if final.parent_message_id else None
         )
-    await quota_service.add_tokens(job.user_id, usage.total_tokens)
     for c in citations:
         await broker.publish(str(mid), "citation", {"message_id": str(mid), "citation": c})
     await broker.publish(
@@ -632,10 +630,6 @@ async def _finish(
             "total_tokens": usage.total_tokens,
             "time_to_first_token_ms": ttft,
             "latency_ms": latency,
-            "quota": {
-                "messages_remaining_today": snapshot["messages_remaining_today"],
-                "tokens_remaining_month": snapshot["tokens_remaining_month"],
-            },
         },
     )
     await broker.publish(
@@ -700,8 +694,6 @@ async def _fail(job: GenerationJob, st: _State, started: float, code: ErrorCode)
             error_code=str(code),
         )
         await db.commit()
-    if not st.text:
-        await quota_service.release_message(job.user_id)  # nothing produced: refund
     _status, retryable, message = ERROR_META[code]
     log.error("chat.generation.failed", message_id=str(mid), error_code=str(code))
     if ok:

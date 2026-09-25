@@ -210,7 +210,6 @@ async def tools(
                 "description": t.description,
                 "enabled": reason is None,
                 "disabled_reason": reason,
-                "daily_limit": limits.get(t.quota_key) if t.quota_key else None,
             }
         )
     return ListEnvelope(data=out)

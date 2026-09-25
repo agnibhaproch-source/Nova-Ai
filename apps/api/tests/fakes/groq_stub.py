@@ -30,6 +30,17 @@ class Scenario:
 scenario = Scenario()
 
 
+# Shape of Groq's per-key rate-limit headers (requests per day, tokens per minute).
+RATE_LIMIT_HEADERS = {
+    "x-ratelimit-limit-requests": "1000",
+    "x-ratelimit-remaining-requests": "999",
+    "x-ratelimit-reset-requests": "1m26.4s",
+    "x-ratelimit-limit-tokens": "8000",
+    "x-ratelimit-remaining-tokens": "7500",
+    "x-ratelimit-reset-tokens": "3.75s",
+}
+
+
 def reset() -> Scenario:
     global scenario
     scenario = Scenario()
@@ -127,11 +138,14 @@ async def handler(request: httpx.Request) -> httpx.Response:
         )
     if body.get("stream"):
         return httpx.Response(
-            200, headers={"content-type": "text/event-stream"}, content=_stream(body, sc)
+            200,
+            headers={"content-type": "text/event-stream", **RATE_LIMIT_HEADERS},
+            content=_stream(body, sc),
         )
     text = sc.json_reply if body.get("response_format") and sc.json_reply else sc.reply
     return httpx.Response(
         200,
+        headers=RATE_LIMIT_HEADERS,
         json={
             "id": "chatcmpl-stub",
             "object": "chat.completion",

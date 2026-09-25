@@ -14,7 +14,6 @@ export const SECTIONS = [
   ["data", "Data controls"],
   ["security", "Security"],
   ["usage", "Usage"],
-  ["billing", "Billing"],
   ["api-keys", "API keys"],
 ] as const;
 

@@ -2,13 +2,13 @@ import { expect, type Page, test } from "@playwright/test";
 
 // Visits every route and fails on uncaught errors, console errors, 5xx responses or a blank
 // page. Signed-in routes use the E2E account (a pro user, not an admin).
-const PUBLIC = ["/", "/pricing", "/download", "/login", "/signup", "/forgot-password", "/reset-password?token=invalid-token-xyz"];
+const PUBLIC = ["/", "/download", "/login", "/signup", "/forgot-password", "/reset-password?token=invalid-token-xyz"];
 const APP = [
   "/chat",
   "/quick",
   "/onboarding",
   "/settings",
-  ...["general", "profile", "personalization", "memory", "files", "data", "security", "usage", "billing", "api-keys"].map((s) => `/settings/${s}`),
+  ...["general", "profile", "personalization", "memory", "files", "data", "security", "usage", "api-keys"].map((s) => `/settings/${s}`),
 ];
 const ADMIN = ["/admin", "/admin/users", "/admin/usage", "/admin/health"];
 

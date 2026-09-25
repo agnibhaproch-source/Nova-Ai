@@ -97,7 +97,7 @@ VPC 10.20.0.0/16 (ap-south-1, 3 AZs)
 3. S3 bucket with versioning, lifecycle rules (`50` §3), CORS (`18` §5), Block Public Access.
 4. SES domain verification (DKIM, SPF, DMARC).
 5. Groq: production API key, spend alerts in Groq console, record model IDs in env.
-6. Razorpay: create Plans (Plus, Pro, monthly, INR) in Razorpay dashboard for test and live modes; run `scripts/set_razorpay_plan_ids.py --env production` to store `plan_…` ids in `plans.razorpay_plan_id`; configure webhook URL `https://<domain>/api/v1/webhooks/razorpay` with the events listed in `31_API_ENDPOINTS.md` §12 and the webhook secret.
+6. (Removed: Razorpay setup; there is no billing, ADR 0004.)
 7. Sentry projects (web, api), Grafana Cloud stack, alert routing.
 8. Bootstrap admin via `ADMIN_BOOTSTRAP_EMAIL`, then unset it.
 

@@ -112,11 +112,8 @@ async def delete_account(
     user = await get_user(db, user_id)
     if not await verify_password(password, user.password_hash):
         raise AppError(ErrorCode.INVALID_CREDENTIALS)
-    from app.services import api_key_service, billing_service
+    from app.services import api_key_service
 
-    live = await billing_service.current(db, user.id)
-    if live is not None and live.status in billing_service.LIVE and live.status != "created":
-        await billing_service.cancel(db, user.id, at_period_end=False, request_id=request_id)
     await api_key_service.revoke_all(db, user.id)
     user.status = "deleted"
     user.deleted_at = datetime.now(UTC)

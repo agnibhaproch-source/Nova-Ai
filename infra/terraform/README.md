@@ -22,7 +22,7 @@ WAF → ALB (HTTPS, 3 AZs, idle 350 s) → web (Next.js BFF, ECS Fargate)
 | `sandbox_asg` | Runner hosts (no internet), internal NLB, IMDSv2 hop limit 1 |
 | `observability` | SNS alerts + CloudWatch alarms (5xx, latency, CPU, storage, Redis memory, runners) |
 
-Secrets (database/Redis URLs, auth secrets, SMTP, Razorpay, Sentry and, in server key mode, the
+Secrets (database/Redis URLs, auth secrets, SMTP, Sentry and, in server key mode, the
 Groq key) live in one Secrets Manager secret and are injected into containers; they never reach
 browsers, images or logs. Groq is the only LLM provider and is called only by api/worker.
 

@@ -6,7 +6,7 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 Role = Literal["system", "user", "assistant", "tool"]
 Purpose = Literal["chat", "title", "summary", "memory_extraction", "eval", "query_rewrite"]
@@ -102,6 +102,7 @@ class ChatResult:
     usage: Usage | None
     groq_model_id: str
     latency_ms: int
+    rate_limits: dict[str, Any] | None = None  # the Groq key's limits from response headers
 
 
 @dataclass(frozen=True)

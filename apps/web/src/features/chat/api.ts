@@ -3,12 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { api, type Envelope, type ListEnvelope } from "@/lib/api/client";
-import type { Message, ModelInfo, Preferences, Quota } from "@/lib/types";
+import type { Message, ModelInfo, Preferences, UsageCurrent } from "@/lib/types";
 
 export const chatKeys = {
   messages: (cid: string) => ["messages", cid] as const,
   models: ["models"] as const,
-  quota: ["usage", "quota"] as const,
+  usage: ["usage", "current"] as const,
   prefs: ["preferences"] as const,
 };
 
@@ -34,10 +34,10 @@ export function useModels() {
   });
 }
 
-export function useQuota() {
+export function useUsage() {
   return useQuery({
-    queryKey: chatKeys.quota,
-    queryFn: async () => (await api<Envelope<Quota>>("/usage/quota")).data,
+    queryKey: chatKeys.usage,
+    queryFn: async () => (await api<Envelope<UsageCurrent>>("/usage/current")).data,
   });
 }
 

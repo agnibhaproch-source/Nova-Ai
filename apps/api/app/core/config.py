@@ -106,11 +106,6 @@ class Settings(BaseSettings):
     SANDBOX_RUNNER_URL: str | None = None
     SANDBOX_RUNNER_TOKEN: SecretStr | None = None
 
-    # Payments (docs/31 §12)
-    RAZORPAY_KEY_ID: str | None = None
-    RAZORPAY_KEY_SECRET: SecretStr | None = None
-    RAZORPAY_WEBHOOK_SECRET: SecretStr | None = None
-
     # Email
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025

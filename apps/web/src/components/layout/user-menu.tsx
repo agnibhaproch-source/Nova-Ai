@@ -25,10 +25,7 @@ export function UserMenu() {
         <span className="flex size-7 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
           {initials}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{user.display_name}</span>
-          <span className="block text-xs capitalize text-muted-foreground">{user.plan_key} plan</span>
-        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{user.display_name}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-60">
         <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>

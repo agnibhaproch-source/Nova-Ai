@@ -9,7 +9,6 @@ const NAV = [
   ["/admin/users", "Users"],
   ["/admin/usage", "Usage"],
   ["/admin/analytics", "Analytics"],
-  ["/admin/billing", "Billing"],
   ["/admin/plans", "Plans"],
   ["/admin/models", "Models"],
   ["/admin/moderation", "Moderation"],

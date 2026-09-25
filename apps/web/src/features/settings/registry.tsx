@@ -1,5 +1,4 @@
 import { ApiKeysSettings } from "./api-keys";
-import { BillingSettings } from "./billing";
 import { DataSettings } from "./data";
 import { FilesSettings } from "./files";
 import { GeneralSettings } from "./general";
@@ -19,6 +18,5 @@ export const SETTINGS_PAGES: Record<string, () => React.ReactNode> = {
   data: DataSettings,
   security: SecuritySettings,
   usage: UsageSettings,
-  billing: BillingSettings,
   "api-keys": ApiKeysSettings,
 };

@@ -23,7 +23,6 @@ export default async function Landing() {
           <Logo />
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost"><Link href="/download">Mac app</Link></Button>
-            <Button asChild variant="ghost"><Link href="/pricing">Pricing</Link></Button>
             {user ? (
               <Button asChild><Link href="/chat">Open Nova</Link></Button>
             ) : (

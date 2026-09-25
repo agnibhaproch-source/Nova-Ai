@@ -24,7 +24,7 @@ X-Accel-Buffering: no
 X-Request-ID: <id>
 ```
 
-Errors detected **before** the stream starts (auth, validation, quota, rate limit, conflicts) are returned as normal JSON error responses with the proper HTTP status — never as SSE.
+Errors detected **before** the stream starts (auth, validation, rate limit, conflicts) are returned as normal JSON error responses with the proper HTTP status — never as SSE.
 
 Frame format (UTF-8, `\n` line endings, blank line terminates an event):
 
@@ -50,7 +50,7 @@ data: {"message_id":"6b1...","part_position":0,"delta":"Hello"}
 | `tool_start` | Tool call validated and starting | `{"message_id", "tool_call_id", "tool_name", "label": str, "arguments": object, "part_position": int}` (`label` e.g. "Searching the web for …") |
 | `tool_result` | Tool finished | `{"message_id", "tool_call_id", "tool_name", "status", "summary", "display": object, "latency_ms", "part_position": int}` |
 | `citation` | Citation resolved (at finalization) | `{"message_id", "citation": CitationPart}` |
-| `usage` | After final Groq call | `{"message_id", "prompt_tokens", "completion_tokens", "total_tokens", "time_to_first_token_ms", "latency_ms", "quota": {"messages_remaining_today": int|null, "tokens_remaining_month": int|null}}` |
+| `usage` | After final Groq call | `{"message_id", "prompt_tokens", "completion_tokens", "total_tokens", "time_to_first_token_ms", "latency_ms"}` (no quota: Nova sets none, ADR 0004) |
 | `conversation_updated` | Title generated while stream still open (optional) | `{"conversation_id", "title"}` |
 | `message_complete` | Terminal: completed or cancelled | `{"message_id", "status": "completed"|"cancelled", "finish_reason", "message": Message}` (full final message with parts) |
 | `error` | Terminal: generation failed | `{"message_id": str|null, "code": ErrorCode, "message": str, "retryable": bool, "retry_after_seconds": int|null}` |
@@ -143,7 +143,7 @@ Stores (`29_COMPONENT_ARCHITECTURE.md` §5):
   - `content_delta` → append to `parts[part_position].text` (creating the part if absent). Rendering is throttled with `requestAnimationFrame`; markdown re-parse at most every 50 ms; code highlighting deferred until the fence closes.
   - `tool_start` / `tool_result` → upsert tool state; render `ToolActivity` rows.
   - `citation` → add to list; citation markers `[n]` become interactive.
-  - `usage` → update quota meter cache (`['usage','quota']`).
+  - `usage` → refresh the Usage page data (`['usage','current']`).
   - `conversation_updated` → patch conversation in `['conversations']` cache.
   - `message_complete` → write final `message` into query cache, delete stream entry, invalidate `['conversations']` (ordering) after 1.5 s.
   - `error` → mark message failed in cache with error; toast for non-retryable errors.

@@ -95,7 +95,6 @@ export function Bars({ data, label }: { data: { x: string; y: number }[]; label:
 
 export const fmtDate = (v: unknown) => (v ? new Date(String(v)).toLocaleString() : "—");
 export const fmtNum = (v: unknown) => (typeof v === "number" ? v.toLocaleString() : "—");
-export const inr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 
 export function askReason(what: string): string | null {
   const r = window.prompt(`Reason for ${what} (recorded in the audit log):`);

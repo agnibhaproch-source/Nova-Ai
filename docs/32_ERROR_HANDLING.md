@@ -106,8 +106,6 @@ A `ServerErrorMiddleware`-level guard ensures that even errors in middleware ret
 | INVALID_MESSAGE_STATE | 409 | This message can't be changed right now. |
 | INVALID_FILE_STATE | 409 | This file can't be processed in its current state. |
 | FILE_NOT_READY | 409 | This file is still processing. |
-| SUBSCRIPTION_EXISTS | 409 | You already have an active subscription. |
-| NO_ACTIVE_SUBSCRIPTION | 404 | You don't have an active subscription. |
 | CANNOT_MODIFY_SELF | 409 | You can't change your own role or status. |
 | EXPORT_NOT_READY | 409 | Your export is still being prepared. |
 | EXPORT_EXPIRED | 410 | This export has expired. Request a new one. |
@@ -119,7 +117,7 @@ A `ServerErrorMiddleware`-level guard ensures that even errors in middleware ret
 | UNSUPPORTED_FILE_TYPE | 415 | This file type isn't supported. |
 | FILE_TYPE_MISMATCH | 415 | The file's contents don't match its type. |
 | FILE_TOO_LARGE | 413 | This file is larger than your plan allows. |
-| STORAGE_QUOTA_EXCEEDED | 413 | You've used all your file storage. Delete files or upgrade. |
+| STORAGE_QUOTA_EXCEEDED | 413 | You've used all your file storage. Delete some files to free up space. |
 | UPLOAD_INVALID | 422 | The upload didn't complete correctly. Try again. |
 | INVALID_FILE | 422 | This file can't be used here. |
 | AUDIO_TOO_LONG | 413 | Recording is too long (max 10 minutes). |
@@ -137,7 +135,7 @@ File processing codes stored on `files.error_code` (not HTTP): `EXTRACTION_FAILE
 | PROVIDER_ERROR | 502 | yes | The AI provider returned an error. Please try again. |
 | PROVIDER_UNAVAILABLE | 502 | yes | Nova's AI provider is having trouble. Try again shortly. |
 | PROVIDER_TIMEOUT | 504 | yes | The AI provider took too long to respond. |
-| PROVIDER_RATE_LIMITED | 503 | yes | Nova is very busy right now. Try again in a moment. |
+| PROVIDER_RATE_LIMITED | 503 | yes | Your Groq API key has hit its rate limit. Try again in a moment. |
 | PROVIDER_MODEL_UNAVAILABLE | 503 | yes | This model is temporarily unavailable. |
 | GENERATION_INTERRUPTED | — (SSE/status) | yes | The response was interrupted. Retry to generate it again. |
 | VOICE_UNAVAILABLE | 503 | no | Voice isn't available right now. |
@@ -149,17 +147,12 @@ File processing codes stored on `files.error_code` (not HTTP): `EXTRACTION_FAILE
 | Code | HTTP | Message |
 |---|---|---|
 | RATE_LIMITED | 429 | You're doing that too often. Try again in N seconds. |
-| QUOTA_EXCEEDED | 429 | You've reached your {limit} for {period}. Upgrade or wait until {reset}. |
 | EXPORT_RATE_LIMITED | 429 | You can request one export per day. |
 
-`QUOTA_EXCEEDED.details = [{"quota": "messages_per_day", "limit": 50, "used": 50, "resets_at": "..."}]`.
+Nova has no usage quotas (ADR 0004); the Groq key's own limits surface as `PROVIDER_RATE_LIMITED`.
 
 ### 4.8 Billing
-| Code | HTTP | Message |
-|---|---|---|
-| PAYMENT_PROVIDER_ERROR | 502 | Payment service error. Please try again. |
-| PAYMENT_SIGNATURE_INVALID | 400 | We couldn't verify this payment. |
-| PLAN_NOT_PURCHASABLE | 422 | This plan isn't available. |
+Removed with billing (ADR 0004).
 
 ### 4.9 Infrastructure
 | Code | HTTP | Retryable | Message |
@@ -176,7 +169,7 @@ File processing codes stored on `files.error_code` (not HTTP): `EXTRACTION_FAILE
 - Mapping of codes to UI behavior:
   - `AUTH_REQUIRED` → redirect to login (preserve `next`).
   - `CSRF_FAILED` → refetch `/auth/session` (re-issues cookie) and retry the request once automatically.
-  - `RATE_LIMITED`/`QUOTA_EXCEEDED` → inline alert with countdown / upgrade CTA.
+  - `RATE_LIMITED`/`PROVIDER_RATE_LIMITED` → inline alert with countdown.
   - `VALIDATION_ERROR` → field errors.
   - `retryable` 5xx on idempotent GETs → TanStack retry (2 attempts, backoff); on mutations → toast with "Try again".
   - Provider errors in stream → failed message UI with Retry.

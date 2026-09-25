@@ -15,6 +15,7 @@ from typing import TypeVar
 import structlog
 from pydantic import BaseModel, ValidationError
 
+from app.ai.groq import ratelimits
 from app.ai.groq.errors import ModelUnavailableError, ProviderError
 from app.ai.groq.provider import GroqProvider
 from app.ai.models_registry import ModelConfig, get_registry
@@ -136,6 +137,9 @@ class GroqService:
                     finally:
                         await stream.aclose()
                 self._record(model.groq_model_id, True)
+                await ratelimits.record(
+                    ctx.user_id, model.groq_model_id, getattr(stream, "rate_limits", None)
+                )
                 log.info(
                     "groq.request.completed",
                     purpose=req.purpose,
@@ -177,6 +181,7 @@ class GroqService:
                 async with self._sem:
                     result = await self.provider.complete(self._resolve(req, model))
                 self._record(model.groq_model_id, True)
+                await ratelimits.record(ctx.user_id, model.groq_model_id, result.rate_limits)
                 return result
             except ModelUnavailableError:
                 self._record(model.groq_model_id, False)

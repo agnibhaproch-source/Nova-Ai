@@ -1,4 +1,4 @@
-"""Admin operations: dashboard, usage, health, errors, billing, moderation, models, plans,
+"""Admin operations: dashboard, usage, health, errors, moderation, models, plans,
 analytics, audited content access (docs/36). Roles enforced server-side on every route."""
 
 from __future__ import annotations
@@ -24,17 +24,14 @@ from app.models import (
     File,
     Message,
     ModerationFlag,
-    Payment,
-    PaymentWebhookEvent,
     Plan,
-    Subscription,
     ToolCall,
     UsageDaily,
     UsageRecord,
     User,
 )
 from app.schemas.common import Envelope, In, ListEnvelope
-from app.services import billing_service, message_service, settings_service
+from app.services import message_service, settings_service
 from app.services.audit_service import audit
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(rate_limit("admin"))])
@@ -95,15 +92,6 @@ async def dashboard(
             Message.created_at >= since, Message.time_to_first_token_ms.is_not(None)
         )
     )
-    subs = await one(
-        select(func.count()).select_from(Subscription).where(Subscription.status == "active")
-    )
-    mrr = await one(
-        select(func.coalesce(func.sum(Plan.price_paise), 0))
-        .select_from(Subscription)
-        .join(Plan, Plan.key == Subscription.plan_key)
-        .where(Subscription.status == "active")
-    )
     series = (
         await db.execute(
             text(
@@ -139,8 +127,6 @@ async def dashboard(
             "estimated_cost_usd": round((cost or 0) / 1_000_000, 4) if cost is not None else None,
             "error_rate": round((failed or 0) / done, 4) if done else 0.0,
             "p95_ttft_ms": int(p95) if p95 else None,
-            "active_subscriptions": subs,
-            "mrr_paise": int(mrr or 0),
             "series": [{"t": r.t, "messages": r.n} for r in series],
             "top_users": [
                 {
@@ -363,113 +349,8 @@ async def errors(
             ),
             "tools": await grouped(ToolCall, ToolCall.error_code, ToolCall.created_at >= since),
             "files": await grouped(File, File.error_code, File.updated_at >= since),
-            "webhooks": await grouped(
-                PaymentWebhookEvent,
-                PaymentWebhookEvent.processing_error,
-                PaymentWebhookEvent.received_at >= since,
-            ),
         }
     )
-
-
-@router.get("/subscriptions", operation_id="admin_subscriptions")
-async def subscriptions(
-    status: str | None = None, db: AsyncSession = Depends(get_db), _p: Principal = Depends(support)
-) -> ListEnvelope[dict[str, Any]]:
-    stmt = select(Subscription).order_by(Subscription.created_at.desc()).limit(200)
-    if status:
-        stmt = stmt.where(Subscription.status == status)
-    rows = (await db.execute(stmt)).scalars().all()
-    return ListEnvelope(
-        data=[
-            {
-                **(billing_service.sub_out(s) or {}),
-                "user_id": str(s.user_id),
-                "razorpay_subscription_id": s.razorpay_subscription_id,
-            }
-            for s in rows
-        ]
-    )
-
-
-@router.get("/payments", operation_id="admin_payments")
-async def payments(
-    db: AsyncSession = Depends(get_db), _p: Principal = Depends(support)
-) -> ListEnvelope[dict[str, Any]]:
-    rows = (
-        (await db.execute(select(Payment).order_by(Payment.created_at.desc()).limit(200)))
-        .scalars()
-        .all()
-    )
-    return ListEnvelope(
-        data=[
-            {
-                "id": str(r.id),
-                "user_id": str(r.user_id),
-                "amount_paise": r.amount_paise,
-                "status": r.status,
-                "method": r.method,
-                "created_at": r.created_at,
-                "razorpay_payment_id": r.razorpay_payment_id,
-            }
-            for r in rows
-        ]
-    )
-
-
-@router.get("/webhook-events", operation_id="admin_webhook_events")
-async def webhook_events(
-    failed_only: bool = False, db: AsyncSession = Depends(get_db), _p: Principal = Depends(support)
-) -> ListEnvelope[dict[str, Any]]:
-    stmt = select(PaymentWebhookEvent).order_by(PaymentWebhookEvent.received_at.desc()).limit(200)
-    if failed_only:
-        stmt = stmt.where(PaymentWebhookEvent.processed_at.is_(None))
-    rows = (await db.execute(stmt)).scalars().all()
-    return ListEnvelope(
-        data=[
-            {
-                "id": str(r.id),
-                "event_id": r.event_id,
-                "event_type": r.event_type,
-                "received_at": r.received_at,
-                "processed_at": r.processed_at,
-                "processing_error": r.processing_error,
-            }
-            for r in rows
-        ]
-    )
-
-
-class ReasonIn(In):
-    reason: str = Field(min_length=3, max_length=500)
-
-
-@router.post("/webhook-events/{event_id}/reprocess", operation_id="admin_webhook_reprocess")
-async def reprocess(
-    event_id: uuid.UUID,
-    body: ReasonIn,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    p: Principal = Depends(require_csrf),
-    _a: Principal = Depends(admin),
-) -> Envelope[dict[str, str]]:
-    ev = await db.get(PaymentWebhookEvent, event_id)
-    if ev is None:
-        raise not_found()
-    await billing_service._process(db, ev.event_type, ev.payload)
-    ev.processed_at, ev.processing_error = datetime.now(UTC), None
-    audit(
-        db,
-        "admin.webhook.reprocessed",
-        actor_user_id=p.uid,
-        actor_type="admin",
-        target_type="webhook_event",
-        target_id=ev.id,
-        reason=body.reason,
-        request_id=request_id(request),
-    )
-    await db.commit()
-    return Envelope(data={"status": "processed"})
 
 
 @router.get("/moderation/flags", operation_id="admin_flags")
@@ -608,8 +489,6 @@ async def plans(
             {
                 "key": p.key,
                 "name": p.name,
-                "price_paise": p.price_paise,
-                "razorpay_plan_id": p.razorpay_plan_id,
                 "is_active": p.is_active,
                 "limits": p.limits,
             }

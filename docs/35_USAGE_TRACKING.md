@@ -1,4 +1,4 @@
-# 35 — Usage Tracking, Quotas & Cost
+# 35 — Usage Tracking & Cost
 
 ## 1. What is tracked
 
@@ -37,68 +37,40 @@ Estimated cost is shown only to admins.
 ## 4. Aggregation
 
 - `aggregate_usage_daily` (ARQ cron every 5 min): upserts `usage_daily` from `usage_records` created since the last watermark (Redis), grouped by `(user_id, day, kind, model_key)`. Idempotent via `INSERT … ON CONFLICT DO UPDATE` using recomputed sums for affected `(user_id, day)` groups.
-- Admin dashboards query `usage_daily`; user usage page queries `usage_daily` for charts and Redis counters for live quota meters.
+- Admin dashboards query `usage_daily`; the user Usage page reads totals from `usage_records` and the Groq key's limits from Redis (§6).
 
 ## 5. Plans and limits (`plans.limits`)
 
-`PlanLimits` Pydantic schema (all keys required):
+Nova has no paid plans and no usage quotas (ADR 0004). The `free`, `plus` and `pro` rows still exist, but migration `0016_no_usage_quotas` gives them identical capability settings:
 
-| Key | free | plus | pro |
-|---|---|---|---|
-| `messages_per_day` | 50 | 500 | 2,000 |
-| `monthly_token_quota` | 500,000 | 5,000,000 | 20,000,000 |
-| `max_output_tokens` | 2,048 | 4,096 | 8,192 (clamped to model max) |
-| `max_message_chars` | 8,000 | 32,000 | 32,000 |
-| `max_document_mb` | 10 | 25 | 50 |
-| `max_image_mb` | 5 | 10 | 10 |
-| `uploads_per_day` | 10 | 100 | 500 |
-| `storage_mb` | 100 | 2,048 | 10,240 |
-| `max_pages_per_file` | 100 | 500 | 1,000 |
-| `max_extracted_tokens_per_file` | 200,000 | 1,000,000 | 2,000,000 |
-| `web_search_per_day` | 10 | 100 | 500 |
-| `code_executions_per_day` | 10 | 100 | 500 |
-| `code_timeout_seconds` | 10 | 10 | 20 |
-| `voice_minutes_per_day` | 5 | 60 | 180 |
-| `models` | ["primary","fast"] | ["primary","fast","vision"] | ["primary","fast","vision"] |
-| `tools` | ["calculator","file_search","web_search","code_execution"] | same | same |
-| `memory` | true | true | true |
-| `api_access` | false | true | true |
+| Key | Value |
+|---|---|
+| `max_output_tokens` | 65,536 (replies are bounded by each model's own output limit in `config/models.yaml`) |
+| `max_message_chars` | 100,000 |
+| `max_document_mb` | 50 |
+| `max_image_mb` | 10 |
+| `storage_mb` | 10,240 |
+| `max_pages_per_file` | 1,000 |
+| `max_extracted_tokens_per_file` | 2,000,000 |
+| `code_timeout_seconds` | 20 |
+| `models` | ["primary","fast","vision"] |
+| `tools` | ["calculator","file_search","web_search","code_execution"] |
+| `memory` | true |
+| `api_access` | true |
 
-Prices (seed values in migration `0005_seed_plans`; business-owned, editable only via migration/runbook): free ₹0, plus ₹499/month (`price_paise=49900`), pro ₹1,499/month (`149900`). `razorpay_plan_id` is set per environment by the runbook "Create Razorpay plans" (`47_DEPLOYMENT.md` §9) via `UPDATE plans SET razorpay_plan_id=…` executed by an admin script `scripts/set_razorpay_plan_ids.py`.
+The former count-based keys (`messages_per_day`, `monthly_token_quota`, `uploads_per_day`, `web_search_per_day`, `code_executions_per_day`, `voice_minutes_per_day`) were removed.
 
 No separate limit for new accounts: there is no email verification (ADR 0002).
 
-## 6. Quota enforcement architecture
+## 6. No quota enforcement: the Groq key is the ceiling
 
-```
-request ─► QuotaService.check_and_reserve(principal, kind, amount_estimate)
-             Redis counters (fast path)  ── miss/cold ──► rebuild from DB
-             ├─ over limit → 429 QUOTA_EXCEEDED (details: quota, limit, used, resets_at)
-             └─ OK → reservation token
-work ...
-completion ─► QuotaService.commit(reservation, actual)   (or .release on early failure)
-```
+Nova does not count or cap messages, tokens, tool calls, voice or uploads. The only limits are:
 
-Redis keys (`nova:{env}:q:` prefix):
+- **The Groq API key's own rate limits.** Groq enforces them per key and returns them on every chat completion in response headers: `x-ratelimit-limit-requests` / `-remaining-requests` / `-reset-requests` (requests per day) and `x-ratelimit-limit-tokens` / `-remaining-tokens` / `-reset-tokens` (tokens per minute); resets are durations such as `2m59.56s`. `GroqProvider` reads them via the SDK's `with_raw_response`, and `GroqService` stores the latest snapshot per (user, model) in the Redis hash `nova:{env}:groqrl:{user_id}` (field = `groq_model_id`, value = JSON of numbers only; 7-day TTL) through `app/ai/groq/ratelimits.py`. When the key is exhausted Groq answers 429, surfaced as `PROVIDER_RATE_LIMITED` (docs/32).
+- **Per-minute abuse guards** (docs/34 §4), the same for every plan and set above Groq's per-key limits.
+- **Size limits** from §5 (message length, file size, storage).
 
-| Counter | Key | TTL | Increment |
-|---|---|---|---|
-| Messages today | `msg:{user_id}:{YYYYMMDD}` | 48 h | +1 at submit (reserve); −1 release if the generation fails before producing any output with a provider/internal error |
-| Tokens this month | `tok:{user_id}:{YYYYMM}` | 40 d | + actual total tokens at completion (all purposes except `eval`) |
-| Web searches today | `ws:{user_id}:{YYYYMMDD}` | 48 h | +1 per executed search |
-| Code executions today | `ce:{user_id}:{YYYYMMDD}` | 48 h | +1 per execution |
-| Uploads today | `up:{user_id}:{YYYYMMDD}` | 48 h | +1 at initiate |
-| Voice seconds today | `vs:{user_id}:{YYYYMMDD}` | 48 h | + audio seconds (STT) + estimated TTS seconds (chars/15) |
-| Storage bytes | `nova:{env}:storage:{user_id}` | 5 min (rebuilt from DB on miss) | ± on upload complete/delete |
-
-Rules:
-- Periods reset at 00:00 UTC (daily) and the 1st of the month 00:00 UTC (monthly); the UI shows reset times in the user's timezone.
-- Token quota check before a turn: `used_tokens + estimated_prompt_tokens + max_output_tokens ≤ monthly_token_quota`, else `QUOTA_EXCEEDED(monthly_token_quota)`. Overshoot of one response is tolerated.
-- Counter rebuild on Redis miss: messages today = `COUNT(messages WHERE user_id AND role='user' AND created_at ≥ day_start)`; tokens month = `SUM(usage_daily.prompt_tokens + completion_tokens)` + unaggregated tail from `usage_records`. Rebuild guarded by a short lock to avoid stampedes.
-- Nightly `reconcile_quotas` recomputes today's/month's counters for users active in the last 24 h and corrects drift > 1%.
-- Plan changes apply immediately (limits read from `plans` via `users.plan_key`, cached 60 s).
-- API-key usage counts against the owning user.
-- Admin override: `system_settings.quota_overrides` map `{user_id: {limit_key: value}}` for support cases (audited).
+`QuotaService` keeps `plan_limits` (capability settings above) and `usage_totals` (messages today, tokens today, tokens this month from `messages` and `usage_records`, informational only).
 
 ## 7. Global budget guard
 
@@ -106,9 +78,8 @@ Rules:
 
 ## 8. User-facing usage
 
-- `/settings/usage` (`27_UI_UX_SPECIFICATION.md` §12) using `GET /usage/quota`, `/usage/summary`, `/usage/records`.
-- `usage` SSE event includes remaining messages/tokens so the composer hint stays live.
-- Emails: when 80% of monthly tokens is reached (once per month) — `send_email(template='quota_warning')`.
+- `/settings/usage` (`27_UI_UX_SPECIFICATION.md` §12) using `GET /usage/current`: the Groq key's limits per model (requests left today, tokens left this minute, reset times, when Groq last reported them) and the user's totals. Groq's daily token limit is not in the headers, so the page links to Groq's console for it.
+- The `usage` SSE event carries token counts only; the web client refetches `/usage/current` on it.
 
 ## 9. Admin usage
 
@@ -116,6 +87,5 @@ Rules:
 
 ## 10. Testing
 
-- Unit: cost math with Decimal; PlanLimits validation.
-- Integration: quota exceeded paths for each counter; release on early failure; rebuild after `FLUSHDB`; reconcile job correctness.
-- Load: counters remain accurate (±1%) under 200 concurrent submits for one user (k6).
+- Unit: cost math with Decimal; parsing of Groq's rate-limit headers and reset durations.
+- Integration: no Nova-side cap blocks a message; `/usage/current` reports the Groq limits from the (stubbed) response headers and the user's totals.

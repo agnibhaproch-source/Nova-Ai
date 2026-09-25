@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.groq import keys as groq_keys
 from app.ai.models_registry import get_registry
-from app.ai.tokens import estimate
 from app.api.deps import Principal
 from app.core.errors import AppError, ErrorCode, not_found
 from app.models import Conversation, Feedback, File, Message, MessagePart
@@ -98,20 +97,10 @@ async def _preflight(
                 {
                     "field": "content",
                     "issue": "too_long",
-                    "message": f"Messages are limited to {limits.get(max_chars_key)} characters on "
-                    "your plan.",
+                    "message": f"Messages are limited to {limits.get(max_chars_key)} characters.",
                 }
             ],
         )
-
-
-async def _reserve(db: AsyncSession, p: Principal, content: str) -> None:
-    await quota_service.check_and_reserve_message(
-        db,
-        user_id=p.uid,
-        plan_key=p.plan_key,
-        estimated_tokens=estimate(content) + 512,
-    )
 
 
 async def _lock(conv_id: uuid.UUID, placeholder: uuid.UUID) -> None:
@@ -339,7 +328,6 @@ async def submit(
     placeholder = uuid.uuid4()
     await _lock(conv.id, placeholder)
     try:
-        await _reserve(db, p, content)
         turn = await _create_turn(
             db,
             p,
@@ -371,7 +359,6 @@ async def regenerate(
     key = await _resolve_model_key(db, p, model_key, msg.model_key or conv.model_key)
     await _lock(conv.id, msg.id)
     try:
-        await _reserve(db, p, parent.content_text)
         turn = await _create_turn(
             db,
             p,
@@ -401,7 +388,6 @@ async def edit(
     key = await _resolve_model_key(db, p, None, conv.model_key)
     await _lock(conv.id, msg.id)
     try:
-        await _reserve(db, p, content)
         turn = await _create_turn(
             db,
             p,

@@ -72,11 +72,10 @@ Lucide icons, 16 px in dense UI, 18 px in toolbar/composer, stroke 1.75. Logo: o
 
 ## 3. Landing page (`/`)
 
-- Header (64 px, sticky, blurred background `backdrop-blur-md` with 80% `--background`): logo + "NOVA AI", nav links (Features, Pricing, Privacy), right: "Log in" (ghost), "Get started" (primary).
-- Hero (min-h 80vh): headline 48/52 700 "Think faster with Nova." subhead 18/28 muted "A fast, private AI assistant for writing, coding, research, and your documents." CTAs: "Get started — it's free" (primary lg), "See pricing" (outline). Below: an animated product preview (static screenshot image of the NOVA UI + subtle floating gradient orb; reduced-motion: static).
+- Header (64 px, sticky, blurred background `backdrop-blur-md` with 80% `--background`): logo + "NOVA AI", nav links (Features, Privacy), right: "Log in" (ghost), "Get started" (primary).
+- Hero (min-h 80vh): headline 48/52 700 "Think faster with Nova." subhead 18/28 muted "A fast, private AI assistant for writing, coding, research, and your documents." CTAs: "Get started — it's free" (primary lg). Below: an animated product preview (static screenshot image of the NOVA UI + subtle floating gradient orb; reduced-motion: static).
 - Feature grid (3×2 cards, 1 column on mobile): Instant answers (streaming), Your documents (RAG with citations), Live web search, Runs code safely, Remembers what matters (controllable memory), Private by design.
 - "How your data is handled" section: 3 bullets.
-- Pricing teaser (plan cards from `GET /api/v1/billing/plans`, SSR with 5 min revalidate).
 - Footer: © NOVA AI, Terms, Privacy, Status link.
 - If a session cookie exists, "Open Nova" replaces CTAs (client check via `/auth/session`).
 
@@ -110,7 +109,7 @@ Two-step card (max-w 560px) with step dots; step 1 chip multi-select; step 2 cus
 - Conversation list (virtualized, `@tanstack/react-virtual`): group headers 12 px 500 uppercase muted, items 36 px tall, radius md, title truncated with ellipsis, active item `--accent` background + 500 weight. Hover shows `⋯` button (menu: Rename, Pin/Unpin, Archive, Delete). Rename edits inline (Enter save, Esc cancel).
 - Infinite scroll: fetch next page when within 400 px of the end; skeleton rows (6) while loading.
 - Streaming indicator: small pulsing dot at the right of an item whose generation is active.
-- Bottom: user menu (avatar 28 px, name, plan badge) → dropdown: Settings, Usage, Upgrade (if free), Admin (if role), Theme submenu, Help, Log out.
+- Bottom: user menu (avatar 28 px, name) → dropdown: Settings, Usage, Admin (if role), Theme submenu, Help, Log out.
 - Empty state: "No conversations yet" muted text.
 
 ### 6.3 Top bar
@@ -136,7 +135,6 @@ Two-step card (max-w 560px) with step dots; step 1 chip multi-select; step 2 cus
 - Textarea: auto-grow from 1 line (24 px) to max 240 px (then scroll), placeholder "Message Nova…", 16 px (prevents iOS zoom).
 - Bottom row: left: Attach (`Paperclip` → menu: Upload file, Add from library), Web search toggle (`Globe`, pressed state `--accent` + `--primary` icon), Code toggle (`Code2`) — toggles only shown if capability enabled; right: Mic (dictation), Send (`ArrowUp` in 32 px circle, primary; disabled when empty or uploads pending) — replaced by **Stop** (`Square` filled) while generating.
 - Behaviors: Enter sends / Shift+Enter newline (inverted if `send_with_enter=false`; then Cmd/Ctrl+Enter sends). IME composition respected (`isComposing`). Drafts persisted per conversation in `composer-store` (+ `localStorage` best-effort). Paste of images creates attachments; paste of > 8,000 chars offers "Attach as file" chip suggestion. Drag-and-drop anywhere over chat shows a full overlay "Drop files to attach".
-- Quota hint: when remaining messages today ≤ 5 → muted line under composer "5 messages left today on Free · Upgrade".
 - Disclaimer line under composer: 12 px muted, centered.
 
 ### 6.6 Command palette (`Cmd/Ctrl+K`)
@@ -166,7 +164,7 @@ Radix Dialog + `cmdk`-style list (implemented with shadcn `Command`): input "Sea
 
 ## 11. Settings
 
-Route `/settings/*` rendered inside the app shell as a two-column layout (≥ md): left nav 220 px (General, Profile, Personalization, Data controls, Security, API keys, Billing, Usage), right content max-w 720 px. On mobile: nav list page → section pages with back button.
+Route `/settings/*` rendered inside the app shell as a two-column layout (≥ md): left nav 220 px (General, Profile, Personalization, Data controls, Security, Usage, API keys), right content max-w 720 px. On mobile: nav list page → section pages with back button.
 
 Sections are cards with title 16 px 600, description 14 px muted, rows separated by hairlines; each row label left, control right. Saves are immediate for toggles (optimistic with rollback + toast on error) and explicit "Save" for text fields (disabled until dirty).
 
@@ -179,18 +177,15 @@ Sections are cards with title 16 px 600, description 14 px muted, rows separated
 
 ## 12. Usage page (`/settings/usage`)
 
-- Quota meters (progress bars with labels): Messages today (x / limit, resets at 00:00 UTC shown in local time), Tokens this month, Web searches today, Code runs today, Storage used, Voice minutes today.
-- Chart: daily messages and tokens for last 30 days (Recharts bar chart, `--primary` fill).
-- Table: recent requests (date, conversation title link, model, tokens, latency, status).
-- Near-limit (≥ 80%) meters turn `--warning`; at limit `--destructive` + upgrade CTA.
+Nova sets no usage limits (ADR 0004); the page shows the user's Groq API key limits and what they have used.
 
-## 13. Subscription / billing (`/settings/billing`)
+- "Groq API key limits" section, one block per model Groq has reported on: "Requests per day" and "Tokens per minute" bars showing what is left (`x left of y`), reset time, and "As of {time}". Bars turn `--warning` at ≤ 20% left and `--destructive` at ≤ 5%. Empty state: "Send a message and your key's limits will show up here." A footnote links to Groq's limits page for the daily token limit, which Groq does not report per reply.
+- "Your usage" section: messages today, tokens today, tokens this month.
+- Loading and error states (with "Try again").
 
-- Current plan card: name, price/month, renewal date or "Cancels on {date}", status badge (Active, Pending, Halted — "Payment failed, update payment in Razorpay email", Cancelled).
-- Plan comparison cards (Free / Plus / Pro): price in ₹, key limits list, CTA ("Current plan", "Upgrade", "Downgrade at period end").
-- Upgrade → server creates subscription → Razorpay Checkout modal (loaded lazily) → on success handler → verifying state ("Confirming payment…" spinner) → success confetti-free check animation and plan refresh; failure → inline error with retry.
-- Cancel: dialog "Your plan stays active until {date}" → confirm.
-- Payment history table: date, amount, status, method, invoice id.
+## 13. Subscription / billing
+
+Removed (ADR 0004).
 
 ## 14. Admin UI (`/admin`)
 
@@ -207,7 +202,7 @@ Separate `AdminShell`: left nav (Dashboard, Users, Usage, Conversations, Health,
 | Error (mutation) | Toast (sonner) with message from error code map; destructive style for failures |
 | Offline | Top banner "You're offline. Messages will send when you're back." — sending disabled while offline |
 | Rate limited | Inline alert near composer with countdown from `Retry-After` |
-| Quota exceeded | Inline alert with Upgrade CTA |
+| Groq key rate-limited | Toast with the error message |
 | Provider down | Inline alert "Nova's AI provider is having trouble. Try again shortly." |
 | Not found | `not-found.tsx`: "This page doesn't exist" / conversation: "Conversation not found" + New chat |
 

@@ -23,7 +23,7 @@ let cid;
 export default function () {
   const u = user();
   if (!cid) cid = newConversation(u);
-  const paths = ["/conversations?limit=30", `/conversations/${cid}/messages?limit=100`, "/files?limit=50", "/usage/quota", "/models"];
+  const paths = ["/conversations?limit=30", `/conversations/${cid}/messages?limit=100`, "/files?limit=50", "/usage/current", "/models"];
   const r = http.get(`${API}${paths[Math.floor(Math.random() * paths.length)]}`, { headers: headers(u), tags: { kind: "read" } });
   check(r, { "200": (x) => x.status === 200 });
 }

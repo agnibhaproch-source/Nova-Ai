@@ -80,7 +80,7 @@ function handler(qc: QueryClient, cid: string) {
         store().addCitation(String(d.message_id), d.citation as Citation);
         break;
       case "usage":
-        void qc.invalidateQueries({ queryKey: chatKeys.quota });
+        void qc.invalidateQueries({ queryKey: chatKeys.usage });
         break;
       case "conversation_updated":
         void qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -124,7 +124,7 @@ async function notifyMemory(qc: QueryClient) {
 }
 
 function reportError(err: unknown) {
-  if (err instanceof ApiError && ["RATE_LIMITED", "QUOTA_EXCEEDED"].includes(err.code)) {
+  if (err instanceof ApiError && ["RATE_LIMITED", "PROVIDER_RATE_LIMITED"].includes(err.code)) {
     toast.error(err.message, { duration: 6000 });
   } else toast.error(errorMessage(err));
 }

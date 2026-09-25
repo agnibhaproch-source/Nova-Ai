@@ -22,7 +22,6 @@ class WebSearchTool(Tool):
         "questions. Returns numbered sources you must cite as [n]."
     )
     timeout_seconds = 20.0
-    quota_key = "web_search_per_day"
     requires_preference = "web_search_enabled"
 
     class Args(ToolArgs):

@@ -48,7 +48,6 @@ class ErrorCode(StrEnum):
     PROVIDER_MODEL_UNAVAILABLE = "PROVIDER_MODEL_UNAVAILABLE"
     GENERATION_INTERRUPTED = "GENERATION_INTERRUPTED"
     RATE_LIMITED = "RATE_LIMITED"
-    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
     DATABASE_ERROR = "DATABASE_ERROR"
     STORAGE_ERROR = "STORAGE_ERROR"
     SERVICE_DEGRADED = "SERVICE_DEGRADED"
@@ -69,11 +68,6 @@ class ErrorCode(StrEnum):
     AUDIO_TOO_LONG = "AUDIO_TOO_LONG"
     NO_SPEECH_DETECTED = "NO_SPEECH_DETECTED"
     VOICE_UNAVAILABLE = "VOICE_UNAVAILABLE"
-    PAYMENT_PROVIDER_ERROR = "PAYMENT_PROVIDER_ERROR"
-    PAYMENT_SIGNATURE_INVALID = "PAYMENT_SIGNATURE_INVALID"
-    PLAN_NOT_PURCHASABLE = "PLAN_NOT_PURCHASABLE"
-    SUBSCRIPTION_EXISTS = "SUBSCRIPTION_EXISTS"
-    NO_ACTIVE_SUBSCRIPTION = "NO_ACTIVE_SUBSCRIPTION"
     TOOL_ERROR = "TOOL_ERROR"
 
 
@@ -163,7 +157,7 @@ ERROR_META: dict[ErrorCode, tuple[int, bool, str]] = {
     ErrorCode.PROVIDER_RATE_LIMITED: (
         503,
         True,
-        "Nova is very busy right now. Try again in a moment.",
+        "Your Groq API key has hit its rate limit. Try again in a moment.",
     ),
     ErrorCode.PROVIDER_MODEL_UNAVAILABLE: (503, True, "This model is temporarily unavailable."),
     ErrorCode.GENERATION_INTERRUPTED: (
@@ -172,7 +166,6 @@ ERROR_META: dict[ErrorCode, tuple[int, bool, str]] = {
         "The response was interrupted. Retry to generate it again.",
     ),
     ErrorCode.RATE_LIMITED: (429, True, "You're doing that too often. Try again shortly."),
-    ErrorCode.QUOTA_EXCEEDED: (429, True, "You've reached your usage limit for now."),
     ErrorCode.DATABASE_ERROR: (503, True, "Something went wrong on our side. Please try again."),
     ErrorCode.STORAGE_ERROR: (503, True, "File storage is temporarily unavailable."),
     ErrorCode.SERVICE_DEGRADED: (503, True, "This feature is temporarily unavailable."),
@@ -180,11 +173,11 @@ ERROR_META: dict[ErrorCode, tuple[int, bool, str]] = {
     ErrorCode.INTERNAL_ERROR: (500, True, "Something went wrong. Please try again."),
     ErrorCode.UNSUPPORTED_FILE_TYPE: (415, False, "This file type isn't supported."),
     ErrorCode.FILE_TYPE_MISMATCH: (415, False, "The file's contents don't match its type."),
-    ErrorCode.FILE_TOO_LARGE: (413, False, "This file is larger than your plan allows."),
+    ErrorCode.FILE_TOO_LARGE: (413, False, "This file is too large."),
     ErrorCode.STORAGE_QUOTA_EXCEEDED: (
         413,
         False,
-        "You've used all your file storage. Delete files or upgrade.",
+        "You've used all your file storage. Delete some files to free up space.",
     ),
     ErrorCode.UPLOAD_INVALID: (422, False, "The upload didn't complete correctly. Try again."),
     ErrorCode.INVALID_FILE: (422, False, "This file can't be used here."),
@@ -205,11 +198,6 @@ ERROR_META: dict[ErrorCode, tuple[int, bool, str]] = {
     ErrorCode.AUDIO_TOO_LONG: (413, False, "Recording is too long (max 10 minutes)."),
     ErrorCode.NO_SPEECH_DETECTED: (422, False, "We couldn't hear any speech. Try again."),
     ErrorCode.VOICE_UNAVAILABLE: (503, False, "Voice isn't available right now."),
-    ErrorCode.PAYMENT_PROVIDER_ERROR: (502, True, "Payment service error. Please try again."),
-    ErrorCode.PAYMENT_SIGNATURE_INVALID: (400, False, "We couldn't verify this payment."),
-    ErrorCode.PLAN_NOT_PURCHASABLE: (422, False, "This plan isn't available."),
-    ErrorCode.SUBSCRIPTION_EXISTS: (409, False, "You already have an active subscription."),
-    ErrorCode.NO_ACTIVE_SUBSCRIPTION: (404, False, "You don't have an active subscription."),
     ErrorCode.TOOL_ERROR: (502, True, "The tool failed. Please try again."),
 }
 

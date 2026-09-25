@@ -1,10 +1,7 @@
-"""Phases 3–10: files + RAG, tools, memory, API keys, billing webhooks, admin (docs/18–31)."""
+"""Phases 3–10: files + RAG, tools, memory, API keys, admin (docs/18–31)."""
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -13,13 +10,12 @@ import httpx
 import pytest
 from sqlalchemy import select, update
 
-from app.core.config import get_settings
 from app.db.session import get_sessionmaker
 from app.documents.chunker import chunk
 from app.documents.extract import Segment
-from app.models import DocumentChunk, File, PaymentWebhookEvent, Subscription, User
+from app.models import DocumentChunk, File, User
 from app.search.fetcher import BlockedURL, resolve_public, validate_url
-from app.services import billing_service, memory_service
+from app.services import memory_service
 from app.tools.base import ToolError
 from app.tools.calculator import evaluate
 from tests.conftest import Client, make_client, signup
@@ -201,12 +197,8 @@ async def test_upload_content_mismatch_rejected(user_client: Client) -> None:
 
 
 # ------------------------------------------------------------------ API keys
-async def test_api_keys_plan_gate_and_bearer_auth(app: Any, user_client: Client) -> None:
-    r = await user_client.post_c("/api/v1/api-keys", json={"name": "ci"})
-    assert r.status_code == 403  # free plan
-    await set_user(plan_key="pro")
-    await relogin(user_client)
-    r = await user_client.post_c("/api/v1/api-keys", json={"name": "ci"})
+async def test_api_keys_and_bearer_auth(app: Any, user_client: Client) -> None:
+    r = await user_client.post_c("/api/v1/api-keys", json={"name": "ci"})  # any plan (ADR 0004)
     assert r.status_code == 201, r.text
     secret, kid = r.json()["data"]["secret"], r.json()["data"]["id"]
     assert secret.startswith("nova_sk_")
@@ -226,87 +218,6 @@ async def test_api_keys_plan_gate_and_bearer_auth(app: Any, user_client: Client)
         assert (await api.get("/api/v1/conversations", headers=bad)).status_code == 401
         assert (await user_client.delete_c(f"/api/v1/api-keys/{kid}")).status_code == 204
         assert (await api.get("/api/v1/conversations", headers=auth)).status_code == 401
-
-
-# ------------------------------------------------------------------ billing
-WEBHOOK_SECRET = "whsec_test_" + "z" * 24
-
-
-@pytest.fixture
-def razorpay_secret(monkeypatch: pytest.MonkeyPatch) -> str:
-    from pydantic import SecretStr
-
-    monkeypatch.setattr(get_settings(), "RAZORPAY_WEBHOOK_SECRET", SecretStr(WEBHOOK_SECRET))
-    return WEBHOOK_SECRET
-
-
-def sign(raw: bytes) -> str:
-    return hmac.new(WEBHOOK_SECRET.encode(), raw, hashlib.sha256).hexdigest()
-
-
-async def test_webhook_signature_and_idempotency(
-    client: Client, user_client: Client, razorpay_secret: str
-) -> None:
-    async with get_sessionmaker()() as s:
-        uid = await s.scalar(select(User.id))
-        s.add(
-            Subscription(
-                user_id=uid,
-                plan_key="pro",
-                status="created",
-                razorpay_subscription_id="sub_TEST123",
-            )
-        )
-        await s.commit()
-    payload = {
-        "event": "subscription.activated",
-        "payload": {
-            "subscription": {
-                "entity": {
-                    "id": "sub_TEST123",
-                    "status": "active",
-                    "current_start": 1_750_000_000,
-                    "current_end": 1_752_592_000,
-                }
-            }
-        },
-    }
-    raw = json.dumps(payload).encode()
-    hdr = {"content-type": "application/json", "x-razorpay-event-id": "evt_1"}
-    r = await client.post(
-        "/api/v1/webhooks/razorpay", content=raw, headers={**hdr, "x-razorpay-signature": "bad"}
-    )
-    assert r.status_code == 400
-    for _ in range(2):
-        r = await client.post(
-            "/api/v1/webhooks/razorpay",
-            content=raw,
-            headers={**hdr, "x-razorpay-signature": sign(raw)},
-        )
-        assert r.status_code == 200
-    async with get_sessionmaker()() as s:
-        events = (await s.execute(select(PaymentWebhookEvent))).scalars().all()
-        assert len(events) == 1 and events[0].processed_at is not None
-        sub = await s.scalar(select(Subscription))
-        user = await s.get(User, uid)
-        assert sub is not None and sub.status == "active"
-        assert user is not None and user.plan_key == "pro"
-
-
-def test_checkout_signature_check() -> None:
-    secret = "rzp_secret_test"
-    msg = "pay_1|sub_1"
-    good = hmac.new(secret.encode(), msg.encode(), hashlib.sha256).hexdigest()
-    assert billing_service._hmac_ok(msg, good, secret)
-    assert not billing_service._hmac_ok(msg, good[:-1] + "0", secret)
-
-
-async def test_plans_public(client: Client) -> None:
-    r = await client.get("/api/v1/billing/plans")
-    assert r.status_code == 200
-    keys = {p["key"] for p in r.json()["data"]}
-    assert {"free", "plus", "pro"} <= keys
-    assert all(not p["purchasable"] for p in r.json()["data"])  # Razorpay not configured
 
 
 # ------------------------------------------------------------------ capabilities / admin

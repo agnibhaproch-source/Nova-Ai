@@ -156,23 +156,6 @@ variable "smtp_from" {
   default = "NOVA AI <no-reply@example.com>"
 }
 
-variable "razorpay_key_id" {
-  type    = string
-  default = ""
-}
-
-variable "razorpay_key_secret" {
-  type      = string
-  default   = ""
-  sensitive = true
-}
-
-variable "razorpay_webhook_secret" {
-  type      = string
-  default   = ""
-  sensitive = true
-}
-
 variable "sentry_dsn" {
   type      = string
   default   = ""

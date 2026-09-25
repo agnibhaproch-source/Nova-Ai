@@ -47,6 +47,8 @@ IPv6 addresses are bucketed by /64.
 
 Defaults (configurable in `app/ratelimit/policies.py`; overridable by admins via `system_settings.rate_limit_overrides`):
 
+Per-user policies are the same for every plan and sit above Groq's own per-key limits, so the user's Groq API key is the real ceiling; they exist only as abuse guards (ADR 0004).
+
 | Policy | Dimension | free | plus | pro | Notes |
 |---|---|---|---|---|---|
 | `global_ip` | IP | 300/min | same | same | All `/api/v1` requests; middleware |
@@ -56,20 +58,19 @@ Defaults (configurable in `app/ratelimit/policies.py`; overridable by admins via
 | `auth_password_forgot` | IP / email hash | 10/h / 3/h | — | — | |
 | `auth_verify_resend` | user | 3 / hour | — | — | |
 | `api_key_auth_fail` | IP | 30 / min | — | — | on invalid keys |
-| `api_read` | user | 120/min | 240/min | 600/min | GET endpoints default |
-| `api_write` | user | 60/min | 120/min | 300/min | unsafe methods default |
-| `chat_messages` | user (+ api key) | 6/min, burst 3 | 20/min, burst 6 | 40/min, burst 10 | message create/regenerate/edit |
-| `stream_resume` | user | 60/min | 60/min | 120/min | |
-| `file_upload` | user | 10/min | 30/min | 60/min | initiate |
-| `rag_search` | user | 30/min | 60/min | 120/min | |
-| `tool_web_search` | user | 10/min | 20/min | 40/min | inside ToolEngine |
-| `tool_code_execution` | user | 5/min | 10/min | 20/min | inside ToolEngine |
-| `voice_transcribe` | user | 20/min | 20/min | 40/min | |
-| `voice_speech` | user | 20/min | 30/min | 60/min | |
+| `api_read` | user | 600/min | same | same | GET endpoints default |
+| `api_write` | user | 300/min | same | same | unsafe methods default |
+| `chat_messages` | user (+ api key) | 60/min, burst 20 | same | same | message create/regenerate/edit |
+| `stream_resume` | user | 120/min | same | same | |
+| `file_upload` | user | 60/min | same | same | initiate |
+| `rag_search` | user | 120/min | same | same | |
+| `tool_web_search` | user | 40/min | same | same | inside ToolEngine |
+| `tool_code_execution` | user | 20/min | same | same | inside ToolEngine |
+| `voice_transcribe` | user | 40/min | same | same | |
+| `voice_speech` | user | 60/min | same | same | |
 | `exports` | user | 1 / 24 h | — | — | returns `EXPORT_RATE_LIMITED` |
 | `analytics_ingest` | IP | 60/min | — | — | |
 | `admin` | user | 300/min | — | — | admin endpoints |
-| `webhook_razorpay` | IP | 600/min | — | — | |
 | `web_search_global` | global | `WEB_SEARCH_GLOBAL_RPS` | — | — | provider protection |
 
 API-key requests apply the plan's user policy **and** a per-key policy at 50% of the plan's rate, so one leaked key cannot consume the whole user budget.

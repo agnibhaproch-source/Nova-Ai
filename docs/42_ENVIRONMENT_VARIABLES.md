@@ -136,14 +136,9 @@ Column "Svc": `A` api, `W` worker, `R` sandbox-runner, `N` Next.js server, `B` b
 | `SMTP_FROM` | server-only | W | yes | `NOVA AI <no-reply@localhost>` | |
 | `SMTP_USE_TLS` | server-only | W | no | `false` (dev), `true` (prod) | STARTTLS |
 
-## 10. Payments (Razorpay)
+## 10. Payments
 
-| Variable | Class | Svc | Required | Default | Description |
-|---|---|---|---|---|---|
-| `RAZORPAY_KEY_ID` | server-only | A | Phase 10 | — | Returned to client in subscription create response |
-| `RAZORPAY_KEY_SECRET` | server-only (secret) | A | Phase 10 | — | Signature verification, API calls |
-| `RAZORPAY_WEBHOOK_SECRET` | server-only (secret) | A | Phase 10 | — | Webhook HMAC |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | public, build-time | B | no | — | Optional; checkout uses the key id from API response when absent |
+Removed with billing (ADR 0004); `RAZORPAY_*` variables are no longer read.
 
 ## 11. Observability
 
@@ -165,7 +160,6 @@ Column "Svc": `A` api, `W` worker, `R` sandbox-runner, `N` Next.js server, `B` b
 | `NEXT_PUBLIC_APP_URL` | Same value as `APP_URL` |
 | `NEXT_PUBLIC_APP_NAME` | `NOVA AI` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Frontend DSN |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay public key id |
 
 No other `NEXT_PUBLIC_*` variables may be added without updating this list.
 

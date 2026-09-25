@@ -145,30 +145,15 @@ Common errors not repeated per endpoint: `401 AUTH_REQUIRED`, `401 AUTH_INVALID`
 
 | Method & route | Auth | Response |
 |---|---|---|
-| `GET /usage/quota` | S / K:usage:read | `{data:{plan_key, period_resets:{daily_at, monthly_at}, limits:{…}, used:{messages_today, tokens_month, web_searches_today, code_executions_today, uploads_today, storage_bytes, voice_seconds_today}}}` |
+| `GET /usage/current` | S / K:usage:read | `{data:{totals:{messages_today, tokens_today, tokens_month}, groq:[{groq_model_id, model_key, display_name, requests_limit, requests_remaining, requests_reset_at, tokens_limit, tokens_remaining, tokens_reset_at, observed_at}]}}`. Nova sets no usage quotas; `groq` is the Groq key's own limits as last reported in Groq's `x-ratelimit-*` response headers, per model (ADR 0004). |
 | `GET /usage/summary` | S / K:usage:read | query `from, to` (≤ 90 days) → `{data:{days:[{day, requests, prompt_tokens, completion_tokens, errors}], totals:{…}, by_model:[…]}}` |
 | `GET /usage/records` | S / K:usage:read | `limit, cursor, kind?` → list of `{id, created_at, kind, model_key, conversation_id, conversation_title, prompt_tokens, completion_tokens, latency_ms, status}` |
 
 (Estimated costs are not shown to end users; admins only.)
 
-## 12. Billing (all `SO`)
+## 12. Billing
 
-| Method & route | Auth | Request | Response | Errors | Side effects |
-|---|---|---|---|---|---|
-| `GET /billing/plans` | P | — | `{data:[{key, name, description, price_paise, currency, limits_summary, is_current?}]}` | — | — |
-| `GET /billing/subscription` | S | — | `{data:subscription|null}` | — | — |
-| `POST /billing/subscriptions` | S+C | `{plan_key}` + `Idempotency-Key` | `201 {data:{subscription_id, razorpay_subscription_id, razorpay_key_id, plan, prefill:{name,email}}}` | `409 SUBSCRIPTION_EXISTS`, `422 PLAN_NOT_PURCHASABLE`, `502 PAYMENT_PROVIDER_ERROR` | Razorpay `subscription.create` (`plan_id`, `total_count=120`, `customer_notify=1`, `notes={user_id, subscription_id}`); `subscriptions` row `created`; audit |
-| `POST /billing/subscriptions/verify` | S+C | `{razorpay_payment_id, razorpay_subscription_id, razorpay_signature}` | `{data:subscription}` | `400 PAYMENT_SIGNATURE_INVALID`, `404` | verify `HMAC_SHA256(key_secret, payment_id + "|" + subscription_id)` (constant-time); fetch subscription from Razorpay to confirm status; set `authenticated/active`; `users.plan_key` updated when `active`; audit; analytics `subscription_started` |
-| `POST /billing/subscription/cancel` | S+C | `{at_period_end: true}` | `{data:subscription}` | `404 NO_ACTIVE_SUBSCRIPTION`, `502 PAYMENT_PROVIDER_ERROR` | Razorpay cancel (`cancel_at_cycle_end=1`); `cancel_at_period_end=true`; audit; analytics `subscription_cancelled` |
-| `GET /billing/payments` | S | `limit, cursor` | list of `{id, amount_paise, currency, status, method, created_at, razorpay_invoice_id}` | — | — |
-
-(Verify the Razorpay SDK method names/params against the official `razorpay` Python SDK before implementing.)
-
-### Webhook
-
-| Method & route | Auth | Request | Response | Side effects |
-|---|---|---|---|---|
-| `POST /webhooks/razorpay` | Signature (`X-Razorpay-Signature` = HMAC_SHA256(RAZORPAY_WEBHOOK_SECRET, raw_body)) | Razorpay event JSON; header `X-Razorpay-Event-Id` | `200` (also for duplicates); `400` invalid signature | insert `payment_webhook_events` (dedupe by event id); process: `subscription.authenticated`, `subscription.activated`, `subscription.charged` (payment row captured, period dates, plan active), `subscription.pending`, `subscription.halted` (plan → free after grace 3 days via job), `subscription.cancelled`, `subscription.completed`, `payment.failed` (payment row failed); state transitions only forward; audit `billing.*` |
+Removed (ADR 0004): Nova is for personal use and has no paid plans, checkout or payment webhooks.
 
 ## 13. API keys (`SO`)
 
@@ -189,7 +174,7 @@ Common errors not repeated per endpoint: `401 AUTH_REQUIRED`, `401 AUTH_INVALID`
 
 | Method & route | Role | Request | Response / side effects |
 |---|---|---|---|
-| `GET /admin/dashboard` | support | `range=24h|7d|30d` | KPIs: users total/new/active (DAU/WAU/MAU), messages, tokens, est. cost, error rate, p95 TTFT, active subscriptions, MRR (paise), queue depth |
+| `GET /admin/dashboard` | support | `range=24h|7d|30d` | KPIs: users total/new/active (DAU/WAU/MAU), messages, tokens, est. cost, error rate, p95 TTFT, queue depth |
 | `GET /admin/users` | support | `q (email/name/id), status, role, plan, page, page_size, sort` | users list with usage counters |
 | `GET /admin/users/{id}` | support | — | profile, plan, subscription, sessions count, usage 30d, flags, recent audit events (no content) |
 | `PATCH /admin/users/{id}` | admin | `{status?: "active"|"suspended", suspended_reason?, role?, plan_key_override?}` + `reason` (required) | updated user; suspension revokes sessions; `404`, `409 CANNOT_MODIFY_SELF` (role/status of self) |
@@ -200,10 +185,6 @@ Common errors not repeated per endpoint: `401 AUTH_REQUIRED`, `401 AUTH_INVALID`
 | `GET /admin/conversations/{id}/messages` | admin | `reason` (query, required, 10–500 chars) | full content; audit `admin.content.accessed` with reason; `422 REASON_REQUIRED` |
 | `GET /admin/health` | support | — | dependency checks, Groq model verification report, queue depths, worker heartbeats, circuit states, sandbox runner health |
 | `GET /admin/errors` | support | `from, to, source=groq|tools|files|webhooks` | aggregated error counts by code + recent failed items (ids) |
-| `GET /admin/subscriptions` | support | `status, plan, page` | list |
-| `GET /admin/payments` | support | `status, from, to, page` | list |
-| `GET /admin/webhook-events` | support | `status=failed|processed, event_type, page` | list of `payment_webhook_events` (payload shown to admin only) |
-| `POST /admin/webhook-events/{id}/reprocess` | admin | `{reason}` | reprocessed result; idempotent; audited `admin.webhook.reprocessed` |
 | `GET /admin/audit-logs` | support | `actor_user_id, action, target_type, target_id, from, to, cursor` | list |
 | `GET /admin/moderation/flags` | support | `status, category, page` | list |
 | `PATCH /admin/moderation/flags/{id}` | support | `{status, resolution_note}` | updated flag |

@@ -13,7 +13,6 @@ directly to FastAPI with `X-Nova-Proxy-Secret` from a trusted host.
 | [worker-and-queues.md](worker-and-queues.md) | Worker heartbeat, Queue backlog, Stale generations, Account purge overdue |
 | [storage-and-files.md](storage-and-files.md) | Storage errors, files stuck |
 | [sandbox.md](sandbox.md) | Sandbox |
-| [billing-webhooks.md](billing-webhooks.md) | Webhook failures; creating Razorpay plans |
 | [security-incident.md](security-incident.md) | Suspected breach, leaked key, abuse |
 | [restore-from-backup.md](restore-from-backup.md) | Data loss, DR drill (docs/50) |
 | [release-and-rollback.md](release-and-rollback.md) | Deploys, bad release |

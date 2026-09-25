@@ -6,7 +6,6 @@ from app.api.v1 import (
     admin,
     admin_ops,
     auth,
-    billing,
     conversations,
     features,
     files,
@@ -26,7 +25,6 @@ for module in (
     files,
     features,
     models,
-    billing,
     admin,
     admin_ops,
 ):

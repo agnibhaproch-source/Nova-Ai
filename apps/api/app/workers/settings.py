@@ -266,13 +266,6 @@ async def expire_data_exports(ctx: dict[str, Any]) -> None:
         await db.commit()
 
 
-async def billing_maintenance(ctx: dict[str, Any]) -> None:
-    from app.services import billing_service
-
-    async with get_sessionmaker()() as db:
-        await billing_service.downgrade_halted(db)
-
-
 async def startup(ctx: dict[str, Any]) -> None:
     configure_logging("nova-worker")
     from app.main import _init_models
@@ -306,7 +299,6 @@ class WorkerSettings:
         cron(purge_deleted_users, minute=15, unique=True),
         cron(expire_data_exports, minute=25, unique=True),
         cron(decay_memories, hour=4, minute=30, unique=True),
-        cron(billing_maintenance, minute=45, unique=True),
     ]
     on_startup = startup
     redis_settings = redis_settings()

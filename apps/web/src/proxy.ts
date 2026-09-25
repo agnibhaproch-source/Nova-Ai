@@ -11,12 +11,11 @@ function csp(nonce: string, dev: boolean): string {
   const s3 = process.env.S3_PUBLIC_ENDPOINT ? new URL(process.env.S3_PUBLIC_ENDPOINT).origin : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${s3}`.trim(),
     "media-src 'self' blob:",
-    `connect-src 'self' ${s3} https://api.razorpay.com https://lumberjack.razorpay.com${dev ? " ws:" : ""}`.trim(),
-    "frame-src https://api.razorpay.com https://checkout.razorpay.com",
+    `connect-src 'self' ${s3}${dev ? " ws:" : ""}`.trim(),
     "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",
@@ -58,7 +57,7 @@ export function proxy(request: NextRequest) {
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
   response.headers.set(
     "Permissions-Policy",
-    'camera=(), microphone=(self), geolocation=(), payment=(self "https://checkout.razorpay.com")',
+    "camera=(), microphone=(self), geolocation=(), payment=()",
   );
   if (process.env.NODE_ENV === "production") {
     response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");

@@ -12,6 +12,7 @@ import httpx
 from groq import AsyncGroq
 
 from app.ai.groq import keys as groq_keys
+from app.ai.groq import ratelimits
 from app.ai.groq.converters import build_params
 from app.ai.groq.errors import map_groq_error
 from app.ai.provider import (
@@ -84,8 +85,9 @@ def _usage(obj: Any) -> Usage | None:
 
 
 class GroqChatStream:
-    def __init__(self, stream: Any) -> None:
+    def __init__(self, stream: Any, rate_limits: dict[str, Any] | None = None) -> None:
         self._stream = stream
+        self.rate_limits = rate_limits
 
     async def __aiter__(self) -> AsyncIterator[ChatChunk]:
         try:
@@ -124,16 +126,18 @@ class GroqProvider:
     async def open_stream(self, req: ResolvedChatRequest) -> GroqChatStream:
         params = build_params(req, stream=True, vision=_is_vision(req.groq_model_id))
         try:
-            stream = await get_groq_client().chat.completions.create(**params)
+            raw = await get_groq_client().chat.completions.with_raw_response.create(**params)
+            stream = await raw.parse()
         except groq.GroqError as e:
             raise map_groq_error(e) from e
-        return GroqChatStream(stream)
+        return GroqChatStream(stream, ratelimits.from_headers(raw.headers))
 
     async def complete(self, req: ResolvedChatRequest) -> ChatResult:
         params = build_params(req, stream=False, vision=_is_vision(req.groq_model_id))
         started = time.perf_counter()
         try:
-            resp = await get_groq_client().chat.completions.create(**params)
+            raw = await get_groq_client().chat.completions.with_raw_response.create(**params)
+            resp = await raw.parse()
         except groq.GroqError as e:
             raise map_groq_error(e) from e
         choice = resp.choices[0]
@@ -148,6 +152,7 @@ class GroqProvider:
             usage=_usage(resp),
             groq_model_id=req.groq_model_id,
             latency_ms=int((time.perf_counter() - started) * 1000),
+            rate_limits=ratelimits.from_headers(raw.headers),
         )
 
     async def list_models(self) -> dict[str, int | None]:
